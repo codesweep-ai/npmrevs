@@ -1,9 +1,13 @@
 # The cs-npmrevs specification
 
-cs-npmrevs is a scratch npm registry. It serves npm packages built on this machine,
-passes every other package through from an upstream registry, and carries
-package tarballs in container images, one version per image. An install through
-it resolves the way an install from npmjs.com does, with the local builds added.
+A team of AI coding agents needs to share work in progress that is not yet
+meant for people. cs-npmrevs makes every revision of an npm package installable
+without publishing it. Each build of a commit, or of work not yet committed,
+becomes a prerelease version that npm installs beside the published ones. The
+builds come from a directory of tarballs or from container images, one version
+per image, and every other package passes through from an upstream registry. An
+install through it resolves the way an install from npmjs.com does, with the
+revisions added.
 
 This document states what the tool guarantees and how it is built. Requirements
 use RFC 2119 keywords in bold: **MUST** is an obligation, **SHOULD** is a strong
@@ -13,11 +17,28 @@ document stops explaining itself after it.
 
 ## 1. Purpose
 
-A package that is built but not published cannot be installed the way its users
-will install it. Installing a tarball by path skips the resolution that picks a
+A team of AI coding agents needs to share work in progress. One agent's
+unfinished build of a package is often what another installs next. That build
+is not a version meant for people, and a version published to npmjs.com can
+never be taken back.
+
+cs-npmrevs makes every revision of an npm package installable without publishing
+it. Go gets that for free: a module is source, and its repository is the
+registry, so any commit installs. An npm package is build output, often a
+wrapper and a package per platform, so a commit installs only once its build is
+stored where npm can reach it. cs-npmrevs keeps each build, of a commit or of
+work not yet committed, as a prerelease version.
+
+The team shares those versions through a container registry, one version per
+image, or keeps them in a directory on one machine. cs-npmrevs serves them to npm
+beside the published versions, from the registry itself (§4.5), once `fetch` has
+copied them out (§6), or from the directory. Only the versions meant for people
+go to npmjs.com.
+
+A registry is what lets such a build be installed the way its users will
+install it. Installing a tarball by path skips the resolution that picks a
 version, reads its dependencies and chooses a platform package, which is most
-of what can go wrong. Publishing every build to npmjs.com is not an answer
-either: a published version can never be taken back.
+of what can go wrong.
 
 ### 1.1 Goals
 
@@ -27,14 +48,15 @@ either: a published version can never be taken back.
    a commit's build can be tried under the number it will be published as.
 3. Nothing is precomputed. Every document is built on request from the files and
    the upstream, so nothing goes stale.
-4. A build can travel in a container registry, one version per image, and be
-   read back with no container engine.
+4. A build travels between agents and machines in a container registry, one
+   version per image, and is read back with no container engine.
 5. It runs from one static binary with no runtime to install.
 
 ### 1.2 Non-goals
 
 1. cs-npmrevs accepts no publish. The server answers the read half of the registry
-   API, and a tarball reaches it as a file.
+   API, and a package reaches it as a tarball in a data directory or as a
+   per-version image.
 2. There is no authentication. The server listens on loopback and serves
    whoever reaches it.
 3. It answers plain HTTP, and leaves TLS to whatever stands in front of it.
@@ -42,12 +64,94 @@ either: a published version can never be taken back.
    stored.
 5. It has no search, no web interface and no user accounts.
 
+### 1.3 Other registries
+
+This section is informative, and obliges nothing. It places cs-npmrevs among
+registries and services a reader may already know, as each stood in September
+2026.
+
+| | cs-npmrevs | Verdaccio 6.10 | pnpr 0.1 alpha | pkg.pr.new |
+|---|---|---|---|---|
+| A local version arrives | as a tarball in a directory, or an image (R1, R23) | by `npm publish` | by `npm publish` | from a GitHub Actions run, per commit or pull request |
+| Local and upstream versions of one name | merged, and a local version replaces a published one with its number (R8, R9) | merged through an uplink, which refuses a version the uplink holds | never mixed: each name has one source | never mixed: a build installs by URL, outside any registry |
+| `latest` | the highest release among both (R14) | the uplink's, when it is the same version or newer | the source's own | untouched: a URL names one build |
+| Upstream tarballs | redirected, never stored (R19, R20) | stored | stored | not involved: npm fetches them from npmjs.com |
+| Accounts and access control | none | yes | yes | its GitHub App |
+| Runs as | one static binary | a Node.js server | one binary | a hosted service |
+| Licence | Apache-2.0 | MIT | PolyForm Shield, source-available | MIT |
+
+**pnpr** is pnpm's registry, in Rust. It also serves Cargo and Python packages,
+and resolves a project's dependency graph on the server. Each package name has a
+single source, so it never serves your build of a package beside npmjs.com's
+versions of it. That closes dependency confusion, where a public package with
+the name of a private one is installed in its place. cs-npmrevs merges the two
+sources on purpose, and a strict scope (R21) is how a scope opts out.
+
+**Verdaccio** is a registry to publish to, with an uplink that proxies
+npmjs.com. It refuses a version the uplink already holds, and the uplink's
+dist-tags take the place of yours. A refused publish still leaves its tarball
+behind, so later installs of that version fail their integrity check. It keeps
+the uplink's packument for two minutes by default, and with no uplink, a scope
+sent to it loses every version npmjs.com holds.
+
+**pkg.pr.new** is the closest in purpose: a hosted service that makes the build
+of every commit and pull request installable by URL, without publishing to
+npmjs.com. Builds come only from GitHub Actions, and a URL install bypasses
+ranges and dist-tags. cs-npmrevs serves revisions from CI, a sandbox or one
+machine, through a registry the team controls.
+
+**Nexus and Artifactory** merge a hosted npm repository with a proxy of
+npmjs.com in a group or virtual repository. Both are servers to operate, with
+storage and accounts of their own.
+
+**GitHub Packages** hosts npm packages too, but its npm registry asks for a
+token to install even a public one.
+
+### 1.4 Packages in container registries
+
+This section is informative too. Several ecosystems keep their packages in OCI
+registries already. Homebrew has served its bottles, the packages it installs
+prebuilt, from ghcr.io since 2021. Helm has pushed charts to OCI registries
+natively since version 3.8. The conda-forge channel is mirrored to ghcr.io, and
+pixi installs from that mirror. Flux and Crossplane also use OCI registries for
+their packages.
+
+Other package managers could do the same, npm among them. An OCI registry
+already provides authentication, access control, replication and blob storage
+behind a CDN, run by teams whose job that is. Its storage is addressed by
+digest, so a file pushed twice is stored once, and a manifest that names the
+digests verifies its blobs wherever they came from. Signatures and SBOMs attach
+to an artifact through the referrers API, the same way in every ecosystem.
+Mirrors such as Harbor and Zot need no protocol of their own.
+
+OCI does not bring everything a package manager needs. It knows nothing of
+dependencies, version ranges or platform rules. Fetching a manifest and then a
+blob costs round trips, which an install of hundreds of packages feels. So a
+registry can keep its ecosystem's own metadata API and put OCI behind it, and a
+client never learns what storage the registry uses. cs-npmrevs has that shape: npm
+reads packuments and tarballs, and never an image. A packument is built from
+image manifests and configs alone (R26), and a layer is downloaded only when npm
+asks for its tarball.
+
+cs-npmrevs writes each build as a container image, with the OCI image media types
+for its manifest, config and layer. It does not write an artifact with a media
+type of its own, the kind the ORAS command-line tool pushes. Registries support
+those unevenly: some refuse a config media type they do not know, and some lack
+the fields OCI 1.1 added for artifacts. Every registry that holds container
+images accepts an image. So does every tool that copies images, such as skopeo,
+crane and podman, whether into a registry, an OCI layout or an archive. Docker
+takes one only when it names Docker's own operating system (R41). With no
+cs-npmrevs at hand, `podman create` and `podman cp` still get the tarball out
+(R41). The cost is an image that names a platform and a command it has no use
+for, and that a registry lists among its container images.
+
 ## 2. Vocabulary
 
 | Term | Meaning |
 |---|---|
 | **packument** | The JSON document a registry answers for a package name: every version, the dist-tags, and when each version was published. npm reads it to resolve a version. |
 | **upstream** | The registry every package without a local version comes from. It is npmjs.com unless `--upstream` names another. |
+| **revision** | One build of a package, from a commit or from work not yet committed, identified by the prerelease version it carries. cs-npmrevs serves each revision as a local version. |
 | **local version** | A version cs-npmrevs serves from a file it holds rather than from the upstream: a tarball in a data directory, or one read out of a per-version image. |
 | **data directory** | A directory of npm tarballs that `serve` reads and `extract` and `fetch` write. |
 | **dist-tag** | A name such as `latest` or `dev` that a packument points at one version. |
@@ -70,8 +174,11 @@ cs-npmrevs extract ARCHIVE|REFERENCE [--data DIR]
 cs-npmrevs fetch @SCOPE/NAME[@VERSION]... [--data DIR] [--registry HOST] [--latest N] [--no-deps]
 cs-npmrevs lockfile check [FILE]
 cs-npmrevs lockfile rewrite [FILE] [--to URL] [--dry-run]
+cs-npmrevs completion bash|zsh|fish|powershell
 cs-npmrevs manual
 cs-npmrevs version
+
+Global: [-v|--verbose] [-q|--quiet]
 ```
 
 [`MANUAL.md`](MANUAL.md) documents every flag.
@@ -83,7 +190,7 @@ cs-npmrevs version
 | `GET /-/ping` | `200` with `{}`, once the server is ready |
 | `GET /-/npmrevs` | the status document of §9.2 |
 | `GET /{name}`, `GET /@{scope}/{name}` | the packument |
-| `GET /{name}/-/{file}`, `GET /@{scope}/{name}/-/{file}` | a tarball, or a redirect to the upstream's |
+| `GET /{name}/-/{file}`, `GET /@{scope}/{name}/-/{file}` | a tarball, a `404` in a strict scope, or a redirect to the upstream's |
 | `POST /-/npm/v1/security/...` | forwarded to the upstream, for `npm audit` |
 | any write | `405` |
 | anything else | `404` |
@@ -95,9 +202,10 @@ Both are the same package. A name from before npm required lower case, such as
 ### 3.3 Images
 
 The image of `@scope/name` at version `V` is `<registry>/scope/npm/name:V`. It
-holds one layer, and the layer holds one file: the tarball, at the root, named
-as `npm pack` names it. The npm facts are in the manifest annotations and again
-in the config labels, under the keys of §9.1.
+is a container image with the OCI image media types, for the reasons in §1.4.
+It holds one layer, and the layer holds one file: the tarball, at the root,
+named as `npm pack` names it. The npm facts are in the manifest annotations and
+again in the config labels, under the keys of §9.1.
 
 ## 4. Serving
 
@@ -181,10 +289,10 @@ packument to choose which platform packages to install.*
 **R18.** A request for a local version's tarball **MUST** be answered with its
 bytes.
 
-**R19.** A request for any other tarball **MUST** be redirected with `302` to the
-same path on the upstream. *npm rewrites a tarball URL naming registry.npmjs.org
-to the registry it was given, so the request comes here. The redirect sends the
-download straight to the upstream.*
+**R19.** A request for any other tarball outside a strict scope **MUST** be
+redirected with `302` to the same path on the upstream. *npm rewrites a tarball
+URL naming registry.npmjs.org to the registry it was given, so the request comes
+here. The redirect sends the download straight to the upstream.*
 
 **R20.** The server **MUST NOT** store an upstream tarball.
 
@@ -194,7 +302,8 @@ download straight to the upstream.*
 only, and the upstream **MUST NOT** be asked about it.
 
 **R22.** A package in a strict scope with no local version **MUST** answer `404`,
-with an error naming the package and the scope.
+with an error naming the package and the scope. A tarball in a strict scope that
+is not a local version's **MUST** answer `404` too.
 
 ### 4.5 Images as a source
 
@@ -227,8 +336,9 @@ repository, the packument **MUST** answer `503`.
 the upstream.
 
 **R31.** Every write **MUST** be refused with `405`, and an error that says a
-package reaches the server as a file. *With cs-npmrevs as the only registry in an
-npmrc, `npm publish` through that npmrc then cannot reach npmjs.com.*
+package reaches the server as a tarball or an image, never through `npm
+publish`. *With cs-npmrevs as the only registry in an npmrc, `npm publish` through
+that npmrc then cannot reach npmjs.com.*
 
 **R32.** Every response **MUST** carry a `Server` header naming cs-npmrevs and its
 version, so a script can tell cs-npmrevs from another program on the port.

@@ -1,5 +1,9 @@
 # Contributing to cs-npmrevs
 
+A team of AI coding agents needs to share work in progress that is not yet
+meant for people. cs-npmrevs makes every revision of an npm package installable
+without publishing it, and [README.md](README.md) explains how.
+
 Bug reports and pull requests are welcome. These rules apply to humans and
 coding agents alike. If you are an agent working in this repository, read this
 file before you change anything and follow it.
@@ -60,7 +64,8 @@ Your change has to keep these. Each one names the test or the review that holds
 it.
 
 **Resolution matches npmjs.com.** A packument is what npmjs.com would answer
-had every local version been published there. No tag is moved to a local build.
+had every local version been published there. No tag but `latest` moves to a
+local build, and `latest` only where npmjs.com would move it.
 The registry tests hold the dist-tags, and the npm test holds the install.
 
 **Nothing is precomputed.** Every packument is built on request from the files

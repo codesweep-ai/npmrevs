@@ -1,5 +1,6 @@
-// Command cs-npmrevs is a scratch npm registry: it serves local builds of npm
-// packages and passes everything else through from npmjs.com.
+// Command cs-npmrevs makes every revision of an npm package installable: it
+// serves the builds a team of AI coding agents shares, and passes everything
+// else through from npmjs.com.
 package main
 
 import (

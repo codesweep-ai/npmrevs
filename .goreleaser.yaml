@@ -100,8 +100,7 @@ release:
   header: |
     ## cs-npmrevs {{ .Tag }}
 
-    A scratch npm registry: serve your local builds of npm packages, and every
-    other package from npmjs.com, so npm installs your build as it would install
-    a published one.
+    Package, resolve and serve each revision's build of an npm package, so a
+    team of AI coding agents can install work in progress.
 
     Static `CGO_ENABLED=0` binaries; verify with `checksums.txt` (+ cosign `.sig`).

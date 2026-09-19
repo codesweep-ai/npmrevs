@@ -3,7 +3,7 @@
   "idPrefix": "NRV",
   "schemaVersion": "issue.v1",
   "staleAfterDays": 14,
-  "description": "cs-npmrevs is a scratch npm registry. It serves npm packages built on this machine, passes every other package through from npmjs.com, and carries package tarballs in container images, one version per image. This ledger tracks its defects, improvements and ideas.",
+  "description": "A team of AI coding agents needs to share work in progress that is not yet a version meant for people. npmrevs makes every revision of an npm package installable without publishing it, and everything else comes from npmjs.com. This ledger tracks its defects, improvements and ideas.",
   "toolVersion": "0.7.0",
   "commitUrlTemplate": "https://github.com/codesweep-ai/npmrevs/commit/{sha}"
 }

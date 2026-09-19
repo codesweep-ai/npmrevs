@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Publish npm package tarballs as container images, one image per package
-# version: <registry>/<scope>/npm/<name>:<version>. The CI build runs it after
-# each commit on main, so a person seldom needs to.
+# version: <registry>/<scope>/npm/<name>:<version>. Those images let a team of AI
+# coding agents install builds that are not yet meant for people. The CI build
+# runs this script after each commit on main, so a person seldom needs to.
 #
 # cs-npmrevs builds each image from the tarball alone, as an OCI archive, and
 # podman pushes it. Nothing is carried forward from an earlier image, so each

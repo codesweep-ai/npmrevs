@@ -21,6 +21,7 @@ docs:
     # The project's own command name, which starts sentences in lower case.
     lowercaseStarters:
       - cs-npmrevs
+      - npmrevs
       # The package manager, its runner and the tool that pushes images, which
       # the docs name at the start of a sentence because that is how they are
       # written everywhere.

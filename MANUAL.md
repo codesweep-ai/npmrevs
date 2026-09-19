@@ -2,7 +2,7 @@
 
 ## Name
 
-`cs-npmrevs`: a scratch npm registry that serves your local builds, and passes every other package through from npmjs.com.
+`cs-npmrevs`: package, resolve and serve each revision's build of an npm package, so a team of AI coding agents can install work in progress.
 
 ## Synopsis
 
@@ -24,22 +24,27 @@ Global: [-v|--verbose] [-q|--quiet]
 
 ## Description
 
-cs-npmrevs is an npm registry for packages that are built but not published. Put
-their tarballs in a **data directory**, which is any directory of `.tgz` files,
-and point npm at `cs-npmrevs serve` with an npmrc. npm then installs those
-packages the way it installs published ones, and every other package passes
-through from npmjs.com.
+A team of AI coding agents needs to share work in progress. One agent's
+unfinished build of a package is often what another installs next. That build
+is not a version meant for people, and a version published to npmjs.com can
+never be taken back.
+
+cs-npmrevs makes every revision of an npm package installable without publishing
+it. Each build, of a commit or of work not yet committed, becomes a prerelease
+version, and npm installs it through `cs-npmrevs serve` the way it installs a
+published version. Every other package passes through from npmjs.com.
+
+A team shares its revisions through a container registry such as ghcr.io, one
+version of one package per image. `image build` makes the image, and
+`serve --images` installs from the registry, while `fetch` and `extract` copy
+the tarballs out instead. On one machine, a **data directory**, which is any
+directory of `.tgz` files, serves the same purpose with no container registry.
 
 A version cs-npmrevs holds is a **local version**. It is written into the package's
 **packument**, the document npm reads to pick a version, beside the versions the
 **upstream** publishes. The upstream is npmjs.com unless you name another. A
 local version takes the place of a published one with the same number, so a
 build of a commit installs under the version it will be published as.
-
-cs-npmrevs also carries tarballs in container images, one version of one package
-per image, so a container registry such as ghcr.io can hold builds that never go
-to npmjs.com. `image build` makes the image, `fetch` and `extract` copy the
-tarballs back out, and `serve --images` serves them straight from the registry.
 
 For what cs-npmrevs guarantees and how it is built, see [SPEC.md](SPEC.md).
 
@@ -80,8 +85,8 @@ resolution to the published version.
 
 `--images ghcr.io --images-scope @scope` adds the versions that registry holds
 images of, for packages in that scope. The packument is built from the image
-manifests alone, and a tarball is downloaded only when npm asks for it. The
-tarballs are kept in the cache directory.
+manifests and configs alone, and a tarball is downloaded only when npm asks for
+it. The tarballs are kept in the cache directory.
 
 ### image build
 
@@ -247,9 +252,9 @@ Prints the version, the platform and the Go version the binary was built with.
 | `GET /-/ping` | `200` once the server accepts requests |
 | `GET /-/npmrevs` | a JSON status document: the version, the server's pid, the data directories, the upstream, and how many packages and versions it holds |
 | `GET /<name>` | the packument, with the name's slash escaped (`/@acme%2ftool`) or not |
-| `GET /<name>/-/<file>.tgz` | a local tarball, or a `302` to the upstream's |
+| `GET /<name>/-/<file>.tgz` | a local tarball, a `404` in a strict scope, or a `302` to the upstream's |
 | `POST /-/npm/v1/security/...` | forwarded to the upstream, so `npm audit` works |
-| `PUT`, `DELETE` | `405`: a package reaches cs-npmrevs as a file, never through `npm publish` |
+| `PUT`, `DELETE` | `405`: a package reaches cs-npmrevs as a tarball or an image, never through `npm publish` |
 
 Every response carries `Server: cs-npmrevs/<version>`.
 
@@ -375,8 +380,9 @@ These are answered by the server rather than printed:
 |---|---|---|
 | `503` | `the upstream registry did not answer` | Check the network, or `--upstream`. A package with local versions is never answered with them alone. |
 | `503` | `the images registry did not answer` | Check the network, and `GH_TOKEN` for a private package. |
-| `404` | `… has no local version, and @scope is served from local versions only (--strict)` | Build the package into a data directory, or drop `--strict`. |
-| `405` | `cs-npmrevs serves the read half of the registry API` | Put the tarball in a data directory instead of publishing it. |
+| `404` | `… has no local version, and @scope is served from local versions only (--strict)` | Build the package into a data directory or an image, or drop `--strict`. |
+| `404` | `no local tarball …, and @scope is served from local versions only (--strict)` | Build that version into a data directory or an image, or drop `--strict`. |
+| `405` | `cs-npmrevs serves the read half of the registry API` | Put the tarball in a data directory, or build it into an image, instead of publishing it. |
 | `500` | `… is in two files with different bytes` | Remove one of the two files. |
 
 ## Notes for agents
@@ -402,7 +408,7 @@ These are answered by the server rather than printed:
 
 ## Examples
 
-Serve your local builds, and install one:
+Serve a build from a data directory, and install it:
 
 ```bash
 # ./my-package is yours: any directory with a package.json
@@ -410,7 +416,7 @@ mkdir -p ./data
 npm pack ./my-package --pack-destination ./data
 cs-npmrevs serve --data ./data &
 printf 'registry=http://127.0.0.1:4873/\n' > /tmp/npmrc
-NPM_CONFIG_USERCONFIG=/tmp/npmrc npm install @acme/tool@1.0.0
+NPM_CONFIG_USERCONFIG=/tmp/npmrc npm install my-package@1.0.0
 ```
 
 Publish a tarball as an image, and check it landed:

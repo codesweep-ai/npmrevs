@@ -1,5 +1,6 @@
 // Package registry serves the read half of the npm registry API from local
-// tarballs, and from an upstream registry for everything else.
+// versions, read from data directories and per-version images, and from an
+// upstream registry for everything else.
 //
 // A package with no local version is the upstream's, byte for byte. A package
 // with one gets a packument built on request: the upstream's document with
@@ -178,7 +179,8 @@ func (s *Server) fallback(w http.ResponseWriter, r *http.Request) {
 	}
 	writeError(w, http.StatusMethodNotAllowed, fmt.Sprintf(
 		"cs-npmrevs serves the read half of the registry API, and %s is not part of it. "+
-			"A package reaches it as a tarball in a data directory, not through npm publish.", r.Method))
+			"A package reaches it as a tarball in a data directory or as a per-version image, "+
+			"not through npm publish.", r.Method))
 }
 
 func (s *Server) strict(name string) bool {

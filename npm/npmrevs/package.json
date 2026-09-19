@@ -1,7 +1,7 @@
 {
   "name": "@codesweep-ai/npmrevs",
   "version": "0.0.0",
-  "description": "A scratch npm registry: npm installs your local builds, and everything else comes from npmjs.com.",
+  "description": "Package, resolve and serve each revision's build of an npm package, so a team of AI coding agents can install work in progress.",
   "license": "Apache-2.0",
   "type": "module",
   "engines": {
@@ -17,6 +17,7 @@
     "url": "https://github.com/codesweep-ai/npmrevs/issues"
   },
   "keywords": [
+    "ai-agents",
     "developer-tools",
     "golang",
     "npm",

@@ -1,16 +1,25 @@
 # @codesweep-ai/npmrevs
 
-> **A scratch npm registry: npm installs your local builds, and everything else comes from npmjs.com.**
+> **Package, resolve and serve each revision's build of an npm package, so a team of AI coding agents can install work in progress.**
 
 [![CI](https://github.com/codesweep-ai/npmrevs/actions/workflows/ci.yml/badge.svg)](https://github.com/codesweep-ai/npmrevs/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/codesweep-ai/npmrevs/blob/main/LICENSE)
 
-`cs-npmrevs` serves npm packages you built but did not publish. Drop their
-tarballs in a directory, point npm at `cs-npmrevs serve`, and `npm install` gets
-your build, with every other package passed through from npmjs.com.
+A team of AI coding agents needs to share work in progress. One agent's
+unfinished build of a package is often what another installs next. That build
+is not a version meant for people, and a version published to npmjs.com can
+never be taken back.
 
-It also carries builds in container images, one version per image, so a
-registry such as ghcr.io can hold what never goes to npmjs.com.
+npmrevs makes every revision of an npm package installable without publishing
+it, the way Go makes every commit of a module installable. Each build, of a
+commit or of work not yet committed, becomes a prerelease version. The team
+shares those versions through a container registry such as ghcr.io, or keeps
+them in a directory on one machine.
+
+`cs-npmrevs serve` puts those revisions beside the versions on npmjs.com, so npm
+installs a revision as it installs a release, and everything else still comes
+from npmjs.com. A revision takes the place of a published version with the same
+number, so a commit's build installs under the version it will be published as.
 
 The tool is written in Go, and packaged here for npm projects.
 

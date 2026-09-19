@@ -2,11 +2,12 @@
 // per package version, holding that version's tarball and nothing else.
 //
 // An image is data, not a program. It exists so a registry that serves
-// container images, such as ghcr.io, can hold npm builds nobody wants on
-// npmjs.com, with the retention, access control and garbage collection that
-// registry already has. The image carries the npm facts a packument needs as
-// manifest annotations, where a registry client reads them in one request, and
-// again as config labels, which survive `docker save` and `podman save`.
+// container images, such as ghcr.io, can carry work in progress between the
+// agents of a team, with the retention, access control and garbage collection
+// that registry already has, while npmjs.com keeps only what is released. The
+// image carries the npm facts a packument needs as manifest annotations, where
+// a registry client reads them in one request, and again as config labels,
+// which survive `docker save` and `podman save`.
 package images
 
 import (

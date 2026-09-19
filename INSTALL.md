@@ -1,11 +1,15 @@
 # Installing cs-npmrevs
 
+A team of AI coding agents needs to share work in progress that is not yet
+meant for people. cs-npmrevs makes every revision of an npm package installable
+without publishing it.
+
 `cs-npmrevs` is a single static binary. It needs no runtime and no container
 engine: you put one file on the path and run it. It keeps its files in one data
 directory and one cache, both under your home directory unless you move them.
 
 Once it runs, [`MANUAL.md`](MANUAL.md) has the full surface and
-[`README.md`](README.md) shows what it is for.
+[`README.md`](README.md) shows how a team uses it.
 
 **No version has been tagged yet, so there is nothing on the releases page
 today.** Until there is, install with the Go toolchain or from a clone.

@@ -105,12 +105,16 @@ func run(ctx context.Context, args []string, stdout, stderr io.Writer, getenv fu
 func newRoot(a *app) *cobra.Command {
 	root := &cobra.Command{
 		Use:   "cs-npmrevs",
-		Short: "A scratch npm registry: your local builds, and npmjs.com for the rest",
-		Long: "cs-npmrevs serves npm packages from tarballs on this machine, and passes every\n" +
-			"other package through from npmjs.com. A local version takes the place of a\n" +
-			"published one with the same number, so an install resolves your build.\n\n" +
-			"It also carries tarballs in container images, one version per image, so a\n" +
-			"registry such as ghcr.io can hold builds that never go to npmjs.com.\n\n" +
+		Short: "Package, resolve and serve each revision's build of an npm package, so a team of AI coding agents can install work in progress",
+		Long: "A team of AI coding agents needs to share work in progress. One agent's\n" +
+			"unfinished build of a package is often what another installs next. That build\n" +
+			"is not a version meant for people, and a version published to npmjs.com can\n" +
+			"never be taken back.\n\n" +
+			"cs-npmrevs makes every revision of an npm package installable without publishing\n" +
+			"it. Each build, of a commit or of work not yet committed, becomes a prerelease\n" +
+			"version, shared through a container registry or a directory of tarballs. npm\n" +
+			"installs it through cs-npmrevs serve the way it installs a published version,\n" +
+			"and every other package comes from npmjs.com.\n\n" +
 			"  serve     serve the registry\n" +
 			"  image     build an image from a tarball, or say what one holds\n" +
 			"  extract   copy the tarballs out of an image\n" +

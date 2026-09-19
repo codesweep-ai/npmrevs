@@ -4,9 +4,9 @@
 #
 # Installing a tarball by path skips the resolution that decides which of the
 # four platform packages a machine downloads, which is the part most worth
-# testing. cs-npmrevs is a registry that serves the packages built here and passes
-# every other package through from npmjs.com, so an install through it resolves
-# the way an install from npmjs.com does.
+# testing. cs-npmrevs makes every revision of an npm package installable without
+# publishing it: it serves the packages built here, and passes every other
+# package through from npmjs.com.
 #
 #   npm/local-registry.sh          # build, package, serve, and print how to install
 #   npm/local-registry.sh stop     # stop the server again
