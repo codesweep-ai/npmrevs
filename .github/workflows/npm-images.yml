@@ -1,0 +1,83 @@
+name: publish images
+
+# Publish a commit's npm packages as container images, one per package version:
+# ghcr.io/<owner>/npm/<package>:<version>, the wrapper and each platform package
+# in a repository of its own. npm/publish-images.sh builds each image with the
+# cs-npmrevs built here and pushes it with podman. prune-images.yml expires the old
+# ones.
+#
+# Nothing here reaches npm. It is a workflow of its own, so its token cannot
+# publish to npm, and its builds show on the CI dashboard as a row of their own.
+#
+# It starts when ci finishes, and publishes only a push to main whose ci run
+# passed, so no image comes from a commit that fails any ci job. Pull requests
+# get none.
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+
+permissions:
+  contents: read
+  packages: write # push the images
+
+# One build at a time. Not cancelled: every build publishes its own versions,
+# and a superseded one still has them to publish.
+concurrency:
+  group: npm-images
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: publish images
+    # A run started by ci finishing holds a token that can write packages even
+    # when ci ran for a fork's pull request. Asking for a push to main is what
+    # keeps unreviewed code away from that token.
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The commit ci passed. A run started by ci finishing is otherwise on
+          # main's latest commit, which a later push may already have moved.
+          ref: ${{ github.event.workflow_run.head_sha }}
+          fetch-depth: 0 # the version is the commit, so the history has to be here
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24.x
+
+      # Every platform, as the npm workflow builds. The before hooks are skipped:
+      # ci has already vetted and tested this commit.
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: build --snapshot --clean --skip=before
+
+      - name: package
+        run: node npm/build.mjs --dev
+
+      # The cs-npmrevs this commit builds is the one that builds its images.
+      - name: build cs-npmrevs
+        run: make build-go
+
+      - name: log in to ghcr.io
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "$GHCR_TOKEN" | podman login ghcr.io -u '${{ github.actor }}' --password-stdin
+
+      # The platform packages first and the wrapper last, as npm/publish.sh
+      # publishes them, so a wrapper is never visible before what it depends on.
+      - name: publish
+        env:
+          NPMREVS: ${{ github.workspace }}/bin/cs-npmrevs
+        run: ./npm/publish-images.sh npm/dist/npmrevs-*/ npm/dist/npmrevs

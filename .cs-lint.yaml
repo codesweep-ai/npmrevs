@@ -1,0 +1,80 @@
+# The knobs cs-lint reads for this repository.
+#
+# The linters carry no project knowledge. Everything that differs between
+# repositories lives here, so a fix to a check reaches every project without
+# carrying one project's exceptions into the next.
+#
+# Run `cs-lint <linter> --explain` to read what each rule wants. Tune until
+# every reported problem is a real one: a check that cries wolf is worse than
+# no check.
+
+docs:
+  prose:
+    # The domain terms a reader of this project cannot infer. Each must be
+    # introduced where a document first uses it: glossed on the spot, defined
+    # in a glossary table, or linked to the page that defines it.
+    glossary:
+      - packument
+      - upstream
+      - dist-tag
+
+    # The project's own command name, which starts sentences in lower case.
+    lowercaseStarters:
+      - cs-npmrevs
+      # The package manager, its runner and the tool that pushes images, which
+      # the docs name at the start of a sentence because that is how they are
+      # written everywhere.
+      - npm
+      - npx
+      - podman
+
+    # Verbs the shared list does not carry. Only what is this project's own
+    # belongs here.
+    projectVerbs: []
+
+  refs:
+    # ./my-package is the reader's own package, and every block that names it
+    # says so in the line above. The path is theirs to supply on purpose.
+    placeholderOK: ["my-package"]
+
+    # goreleaser is optional here: `make build` falls back to `go build`
+    # without it, and CONTRIBUTING.md says so.
+    prereqOK: ["goreleaser"]
+
+  surface:
+    tool: cs-npmrevs
+    toolPath: bin/cs-npmrevs
+
+    # The section that states the command surface. Its block is held against
+    # the verbs the binary carries.
+    surfaceSection: MANUAL.md#Synopsis
+
+    # Read-only, offline, and safe to run in a checkout on every gate.
+    safeVerbs:
+      - version
+
+oss:
+  project: cs-npmrevs
+  githubRepo: codesweep-ai/npmrevs
+
+  # True once the repository is public. Flip this in the same commit that makes
+  # the repository public.
+  published: false
+
+  # This repository ships a binary, so it carries the whole set.
+  docSet:
+    - README.md
+    - INSTALL.md
+    - MANUAL.md
+    - SPEC.md
+    - CONTRIBUTING.md
+    - AGENTS.md
+
+  # ada and grace are the fictional people the docs and tests use.
+  homeAllow: ["user", "you", "name", "runner", "ada", "grace"]
+  # github.com because git@github.com is the user of every GitHub SSH URL, which
+  # the image code reads out of package.json and the tests write on purpose.
+  emailAllow: ["example.com", "example.org", "example.net", "noreply.github.com", "github.com"]
+
+  # Only what the built-in list does not already carry.
+  expectedTargets: ["install", "uninstall", "fmt", "fmt-check", "vet", "deadcode"]

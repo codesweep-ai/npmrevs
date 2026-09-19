@@ -1,0 +1,49 @@
+{
+  "name": "@codesweep-ai/npmrevs",
+  "version": "0.0.0",
+  "description": "A scratch npm registry: npm installs your local builds, and everything else comes from npmjs.com.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=18.17"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/codesweep-ai/npmrevs.git",
+    "directory": "npm/npmrevs"
+  },
+  "homepage": "https://github.com/codesweep-ai/npmrevs#readme",
+  "bugs": {
+    "url": "https://github.com/codesweep-ai/npmrevs/issues"
+  },
+  "keywords": [
+    "developer-tools",
+    "golang",
+    "npm",
+    "npm-registry",
+    "oci"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "bin": {
+    "cs-npmrevs": "bin/cs-npmrevs.mjs"
+  },
+  "exports": {
+    ".": "./index.mjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "bin",
+    "index.mjs",
+    "README.md",
+    "LICENSE",
+    "NOTICE"
+  ],
+  "optionalDependencies": {
+    "@codesweep-ai/npmrevs-darwin-arm64": "0.0.0",
+    "@codesweep-ai/npmrevs-darwin-x64": "0.0.0",
+    "@codesweep-ai/npmrevs-linux-arm64": "0.0.0",
+    "@codesweep-ai/npmrevs-linux-x64": "0.0.0"
+  }
+}

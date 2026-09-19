@@ -1,0 +1,142 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: build-test (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the history rules read the history
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      # No linter install step: golangci-lint and deadcode are pinned as Go
+      # tools, so `make check` builds them from the module cache at the versions
+      # this repository records. An unpinned linter would turn somebody else's
+      # release into a red build on a pull request that touched nothing.
+      #
+      # The runner's own node and npm drive the test that installs through the
+      # server, so it runs here rather than skipping.
+      - name: make check
+        run: make check
+
+      - name: build
+        run: make build
+
+  # An invalid workflow file fails the run with zero jobs and no annotation in
+  # the API, which is the least legible failure the forge produces. actionlint
+  # is pinned as a Go tool in go.mod, so a clean `make actionlint` on a laptop
+  # means a clean one here.
+  actionlint:
+    name: workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: make actionlint
+
+  # A job each, because each needs no matrix and answers in seconds, and answers
+  # even when the tests are failing. cs-lint is pinned as a Go tool in go.mod,
+  # so these run the version this repository records. Both read the tree and
+  # nothing else, so they answer before anything is built.
+  prose:
+    name: docs prose
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: make prose
+
+  refs:
+    name: docs refs
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: make refs
+
+  oss:
+    name: open-source readiness
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the history rules read the history
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: make oss
+
+  # Last of the three, because every rule in it asks the binary the repository
+  # builds.
+  surface:
+    name: docs surface
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - run: make surface
+
+  # The ledger's freshness gate. CONTRIBUTING.md asks for a render and a check
+  # before every commit that touches ledger/, and nothing else enforces it.
+  ledger:
+    name: ledger check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the check resolves every sha a record cites
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: make ledger
+
+  # The release manifest is validated on every change, because a manifest naming
+  # a file that no longer exists breaks the release build outright and schema
+  # validation does not catch it.
+  release-check:
+    name: release manifest
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+      - uses: goreleaser/goreleaser-action@v7
+        with:
+          version: "~> v2"
+          args: check

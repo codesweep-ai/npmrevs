@@ -1,0 +1,20 @@
+{
+  "id": "NRV-001",
+  "title": "Publish the project",
+  "type": "improvement",
+  "severity": "low",
+  "status": "open",
+  "foundBy": "the repository's first commit",
+  "opened": "2026-09-18",
+  "resolved": null,
+  "stint": null,
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "The repository exists only on this machine. Publishing it takes these steps, in order. Create codesweep-ai/npmrevs on GitHub as an empty public repository, enable private vulnerability reporting, and set the description to the README headline. Create a granular npm token that can publish to @codesweep-ai and expires within days, and add it to the repository as the NPM_BOOTSTRAP_TOKEN secret. Push main, with a commit that flips oss.published. The npm workflow's first run, after ci passes, then creates the five packages with that token. Name npm.yml as the trusted publisher of each of the five, delete the secret, revoke the token, and set each package to require two-factor authentication and disallow tokens. Make each of the five ghcr.io packages public after the first image lands, and add the project to the CI dashboard. Tag v0.1.0 to cut the first release. Until the repository is public, lint, ledger and ui cannot pin cs-npmrevs, because their builds fetch it from GitHub.",
+  "notes": [],
+  "links": []
+}
