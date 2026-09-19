@@ -62,6 +62,7 @@ func TestUsageMistakesExitTwo(t *testing.T) {
 		{"serve", "--strict", "acme"},
 		{"serve", "--upstream", "ftp://x"},
 		{"image", "build", "x.tgz", "--format", "zip"},
+		{"image", "build", "x.tgz", "--revision", "HEAD"},
 		{"image", "inspect", "no-such-file-and-not-a-ref"},
 		{"fetch", "unscoped"},
 		{"fetch", "@a/b@v1"},

@@ -96,6 +96,91 @@ func TestBuildCarriesTheMetadataTwice(t *testing.T) {
 	assertHolds(t, img, data)
 }
 
+// A platform package's image names the platform its os and cpu name, so a
+// registry shows it. Anything that does not name exactly one platform with an
+// OCI name, a wrapper included, keeps linux/amd64.
+func TestBuildNamesThePlatformThePackageNames(t *testing.T) {
+	for _, c := range []struct {
+		os, cpu any
+		want    string
+	}{
+		{[]string{"linux"}, []string{"arm64"}, "linux/arm64"},
+		{[]string{"darwin"}, []string{"x64"}, "darwin/amd64"},
+		{[]string{"win32"}, []string{"ia32"}, "windows/386"},
+		{"linux", "arm64", "linux/arm64"},
+		{nil, nil, "linux/amd64"},
+		{[]string{"linux"}, nil, "linux/amd64"},
+		{[]string{"darwin", "linux"}, []string{"arm64"}, "linux/amd64"},
+		{[]string{"!win32"}, []string{"arm64"}, "linux/amd64"},
+		{[]string{"linux"}, []string{"mipsel"}, "linux/mipsle"},
+		{[]string{"linux"}, []string{"ppc64"}, "linux/ppc64le"},
+		{[]string{"aix"}, []string{"ppc64"}, "aix/ppc64"},
+		{[]string{"android"}, []string{"arm64"}, "android/arm64"},
+		{[]string{"sunos"}, []string{"x64"}, "linux/amd64"},
+		{[]string{"linux"}, []string{"s390"}, "linux/amd64"},
+	} {
+		var kv []any
+		if c.os != nil {
+			kv = append(kv, "os", c.os)
+		}
+		if c.cpu != nil {
+			kv = append(kv, "cpu", c.cpu)
+		}
+		p, data := pkgOf(t, testpkg.Manifest("@acme/tool-x", "1.0.0", kv...))
+		img, err := images.Build(p, data)
+		if err != nil {
+			t.Fatal(err)
+		}
+		cf, _ := img.ConfigFile()
+		if got := cf.OS + "/" + cf.Architecture; got != c.want {
+			t.Errorf("os %v, cpu %v: %s, want %s", c.os, c.cpu, got, c.want)
+		}
+	}
+}
+
+// The commit a tarball was built from is recorded when it is known: from the
+// caller, else from the gitHead npm wrote into package.json.
+func TestBuildRecordsTheRevision(t *testing.T) {
+	const sha = "8bdc0656c7671b2c3d4e5f60718293a4b5c6d7e8"
+	revision := func(img v1.Image) (string, string) {
+		man, _ := img.Manifest()
+		cf, _ := img.ConfigFile()
+		const key = "org.opencontainers.image.revision"
+		return man.Annotations[key], cf.Config.Labels[key]
+	}
+	p, data := pkgOf(t, testpkg.Manifest("@acme/tool", "1.0.0"))
+	img, err := images.Build(p, data, images.WithRevision(sha))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if a, l := revision(img); a != sha || l != sha {
+		t.Errorf("annotation %q, label %q", a, l)
+	}
+	img, _ = images.Build(p, data)
+	if a, l := revision(img); a != "" || l != "" {
+		t.Errorf("no revision was given, and %q %q was recorded", a, l)
+	}
+
+	p, data = pkgOf(t, testpkg.Manifest("@acme/tool", "1.0.0", "gitHead", sha))
+	img, _ = images.Build(p, data)
+	if a, _ := revision(img); a != sha {
+		t.Errorf("gitHead not recorded: %q", a)
+	}
+	img, _ = images.Build(p, data, images.WithRevision("abcdef1"))
+	if a, _ := revision(img); a != "abcdef1" {
+		t.Errorf("the caller's revision did not take the place of gitHead: %q", a)
+	}
+
+	p, data = pkgOf(t, testpkg.Manifest("@acme/tool", "1.0.0", "gitHead", "main"))
+	img, _ = images.Build(p, data)
+	if a, _ := revision(img); a != "" {
+		t.Errorf("a gitHead that names no commit was recorded: %q", a)
+	}
+	if images.ValidRevision("HEAD") == nil || images.ValidRevision("abc12") == nil || images.ValidRevision(sha) != nil {
+		t.Error("ValidRevision accepts the wrong names")
+	}
+}
+
 // assertHolds extracts img's tarballs and checks it holds exactly data.
 func assertHolds(t *testing.T, img v1.Image, data []byte) {
 	t.Helper()

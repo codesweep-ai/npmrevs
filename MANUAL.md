@@ -9,7 +9,7 @@
 ```
 cs-npmrevs serve [--data DIR]... [--listen ADDR] [--print-port] [--upstream URL]
               [--images REGISTRY --images-scope @SCOPE...] [--strict @SCOPE]... [--cache DIR]
-cs-npmrevs image build FILE.tgz [-o FILE] [--registry HOST] [--format oci|docker]
+cs-npmrevs image build FILE.tgz [-o FILE] [--registry HOST] [--format oci|docker] [--revision SHA]
 cs-npmrevs image inspect FILE.tgz|ARCHIVE|REFERENCE [--registry HOST] [--json]
 cs-npmrevs extract ARCHIVE|REFERENCE [--data DIR]
 cs-npmrevs fetch @SCOPE/NAME[@VERSION]... [--data DIR] [--registry HOST] [--latest N] [--no-deps]
@@ -102,10 +102,22 @@ scope. It holds one layer with the tarball at its root, and the npm facts about
 it as manifest annotations and config labels. Nothing is pushed and no container
 engine runs. The same tarball always gives the same image, byte for byte.
 
+The image names the platform the package's `os` and `cpu` fields name, such as
+`linux/arm64` for a package built for arm64 Linux, as
+[SPEC.md](SPEC.md#93-platform-names) lists. A package that names no single
+platform, such as a wrapper, gets `linux/amd64`. Nothing runs the image, so the
+platform is a label. Docker still refuses an image that names an operating
+system other than its own. Copy such a tarball out with `cs-npmrevs extract` or
+podman instead.
+
+`--revision SHA` records the commit the tarball was built from as
+`org.opencontainers.image.revision`. Without it, the `gitHead` npm writes into
+`package.json` is recorded when it names a commit.
+
 `--format oci` writes an OCI archive, which keeps the annotations. Push it with
 `podman load -i FILE` and then `podman push REFERENCE`, which keep the
 annotations and recompress the layer. `--format docker` writes the archive
-`docker save` writes, which `docker load` reads.
+`docker save` writes, which `docker load` reads when the image names Linux.
 
 ### image inspect
 
@@ -217,6 +229,7 @@ Prints the version, the platform and the Go version the binary was built with.
 | `-o FILE`, `--output FILE` | image build | The archive to write. Default: the tarball's name, `.tgz` replaced by `.image.tar`. |
 | `--registry HOST` | image build, image inspect, fetch | The registry the image references name. Default `ghcr.io`. |
 | `--format oci\|docker` | image build | The archive format. Default `oci`. |
+| `--revision SHA` | image build | The commit the tarball was built from, recorded as `org.opencontainers.image.revision`. Default: the `gitHead` in `package.json`, when it names one. |
 | `--json` | image inspect | Print a JSON array. |
 | `--latest N` | fetch | Fetch only the newest N versions of a package named without a version. `0`, the default, fetches all. |
 | `--no-deps` | fetch | Fetch only the packages named. |

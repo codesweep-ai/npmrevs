@@ -49,6 +49,7 @@ type buildOptions struct {
 	output   string
 	registry string
 	format   string
+	revision string
 }
 
 func imageBuildCmd(a *app) *cobra.Command {
@@ -69,6 +70,7 @@ func imageBuildCmd(a *app) *cobra.Command {
 	f.StringVarP(&o.output, "output", "o", "", "the archive to write (default: FILE with .tgz replaced by .image.tar)")
 	f.StringVar(&o.registry, "registry", images.DefaultRegistry, "the registry the image reference names")
 	f.StringVar(&o.format, "format", string(images.OCI), "the archive format: oci, or docker")
+	f.StringVar(&o.revision, "revision", "", "the commit the tarball was built from, recorded as org.opencontainers.image.revision (default: the gitHead in package.json, if any)")
 	return cmd
 }
 
@@ -76,6 +78,13 @@ func (a *app) imageBuild(file string, o *buildOptions) error {
 	format, err := images.ParseFormat(o.format)
 	if err != nil {
 		return err
+	}
+	var opts []images.BuildOption
+	if o.revision != "" {
+		if err := images.ValidRevision(o.revision); err != nil {
+			return err
+		}
+		opts = append(opts, images.WithRevision(o.revision))
 	}
 	data, err := os.ReadFile(file)
 	if err != nil {
@@ -89,7 +98,7 @@ func (a *app) imageBuild(file string, o *buildOptions) error {
 	if err != nil {
 		return failed(err)
 	}
-	img, err := images.Build(pkg, data)
+	img, err := images.Build(pkg, data, opts...)
 	if err != nil {
 		return failed(err)
 	}

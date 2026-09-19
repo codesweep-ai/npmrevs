@@ -64,7 +64,7 @@ either: a published version can never be taken back.
 ```
 cs-npmrevs serve [--data DIR]... [--listen ADDR] [--print-port] [--upstream URL]
               [--images REGISTRY --images-scope @SCOPE...] [--strict @SCOPE]... [--cache DIR]
-cs-npmrevs image build FILE.tgz [-o FILE] [--registry HOST] [--format oci|docker]
+cs-npmrevs image build FILE.tgz [-o FILE] [--registry HOST] [--format oci|docker] [--revision SHA]
 cs-npmrevs image inspect FILE.tgz|ARCHIVE|REFERENCE [--registry HOST] [--json]
 cs-npmrevs extract ARCHIVE|REFERENCE [--data DIR]
 cs-npmrevs fetch @SCOPE/NAME[@VERSION]... [--data DIR] [--registry HOST] [--latest N] [--no-deps]
@@ -264,13 +264,23 @@ carries is what names the tarball.*
 
 **R40.** Building an image **MUST NOT** need a container engine or the network.
 
-**R41.** The image config **MUST** name `linux/amd64` and a command, so
+**R41.** The image config **MUST** name a platform and a command, so
 `podman create` accepts the image and a client without cs-npmrevs can copy the
-tarball out.
+tarball out. The platform **MUST** be the one the package's `os` and `cpu`
+fields name when each names exactly one value that §9.3 maps, and `linux/amd64`
+otherwise. *A registry shows the platform on the package's page, so the image
+of a platform package names its own. Nothing chooses an image by it: npm
+chooses a platform package by its `os` and `cpu` (R17), and podman, given
+another platform, warns and goes on. Docker refuses an image that names an
+operating system other than its own, so the tarball of a darwin or win32
+package comes out with podman or `cs-npmrevs extract` instead.*
 
 **R42.** When `package.json` names a GitHub repository, the image **MUST** carry
 `org.opencontainers.image.source` naming it. *ghcr.io links a package to the
-repository that label names, and gives it that repository's visibility.*
+repository that label names, and gives it that repository's visibility.* When
+`--revision` or the package's `gitHead` names a commit, the image **MUST** carry
+`org.opencontainers.image.revision` naming it. *A version names its commit only
+by convention, and this key names it in the form every OCI tool reads.*
 
 ## 6. Extract and fetch
 
@@ -344,6 +354,7 @@ Each key is written as a manifest annotation and as a config label.
 | `org.opencontainers.image.version` | the version |
 | `org.opencontainers.image.description` | a sentence that says the image is a tarball and not a program |
 | `org.opencontainers.image.source` | the GitHub repository, when `package.json` names one |
+| `org.opencontainers.image.revision` | the commit the tarball was built from, when `--revision` or the `gitHead` in `package.json` names one |
 
 For example, the image of `@acme/tool` 1.0.0 carries:
 
@@ -384,6 +395,24 @@ For example, the image of `@acme/tool` 1.0.0 carries:
   "versions": 5
 }
 ```
+
+### 9.3 Platform names
+
+npm's `os` and `cpu` fields hold Node's names for a platform, and an image
+config holds OCI's. R41 maps one to the other as this table lists.
+
+| npm | OCI |
+|---|---|
+| `os`: `aix`, `android`, `darwin`, `freebsd`, `linux`, `netbsd`, `openbsd` | the same name |
+| `os`: `win32` | `windows` |
+| `cpu`: `arm`, `arm64`, `loong64`, `mips`, `riscv64`, `s390x` | the same name |
+| `cpu`: `x64` | `amd64` |
+| `cpu`: `ia32` | `386` |
+| `cpu`: `mipsel` | `mipsle` |
+| `cpu`: `ppc64` | `ppc64le`, or `ppc64` with `os` `aix` |
+
+Any other value maps to nothing. `sunos` is one: OCI names two systems for it,
+`solaris` and `illumos`.
 
 ## 10. Configuration
 

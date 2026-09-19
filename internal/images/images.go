@@ -93,8 +93,37 @@ type Metadata struct {
 	Entry json.RawMessage `json:"entry,omitempty"`
 }
 
+// A BuildOption adjusts the image Build makes.
+type BuildOption func(*buildConfig)
+
+type buildConfig struct {
+	revision string
+}
+
+// WithRevision records rev, the commit the tarball was built from, as the
+// image's org.opencontainers.image.revision. It takes the place of the gitHead
+// the package.json may name.
+func WithRevision(rev string) BuildOption {
+	return func(c *buildConfig) { c.revision = rev }
+}
+
+// revisionPattern is what names a commit: a hex object name of 7 to 64 digits.
+var revisionPattern = regexp.MustCompile(`^[0-9a-f]{7,64}$`)
+
+// ValidRevision reports whether rev can name a commit.
+func ValidRevision(rev string) error {
+	if !revisionPattern.MatchString(rev) {
+		return fmt.Errorf("%q does not name a commit: give its hex object name, 7 to 64 digits", rev)
+	}
+	return nil
+}
+
 // Build returns the image that carries one tarball.
-func Build(pkg *npmpkg.Package, data []byte) (v1.Image, error) {
+func Build(pkg *npmpkg.Package, data []byte, opts ...BuildOption) (v1.Image, error) {
+	var cfg buildConfig
+	for _, o := range opts {
+		o(&cfg)
+	}
 	layer, err := layerFor(npmpkg.Filename(pkg.Name, pkg.Version), data)
 	if err != nil {
 		return nil, err
@@ -105,7 +134,7 @@ func Build(pkg *npmpkg.Package, data []byte) (v1.Image, error) {
 		return nil, err
 	}
 
-	keys, err := keysFor(pkg)
+	keys, err := keysFor(pkg, cfg.revision)
 	if err != nil {
 		return nil, err
 	}
@@ -114,7 +143,7 @@ func Build(pkg *npmpkg.Package, data []byte) (v1.Image, error) {
 		return nil, err
 	}
 	cf = cf.DeepCopy()
-	cf.OS, cf.Architecture = "linux", "amd64"
+	cf.OS, cf.Architecture = platformOf(pkg)
 	cf.Created = v1.Time{Time: Epoch}
 	// Nothing ever runs this image. A command is set because `podman create`
 	// refuses an image without one, and creating a container is how a client
@@ -131,8 +160,58 @@ func Build(pkg *npmpkg.Package, data []byte) (v1.Image, error) {
 	return withAnnotations, nil
 }
 
+// npmOS and npmCPU name the OCI platform each value of npm's os and cpu fields
+// means, as SPEC.md §9.3 lists them. The fields hold Node's process.platform
+// and process.arch. A value missing here maps to nothing: sunos, for one, is
+// either of two OCI systems, solaris and illumos.
+var (
+	npmOS = map[string]string{
+		"aix": "aix", "android": "android", "darwin": "darwin", "freebsd": "freebsd",
+		"linux": "linux", "netbsd": "netbsd", "openbsd": "openbsd", "win32": "windows",
+	}
+	npmCPU = map[string]string{
+		"arm": "arm", "arm64": "arm64", "ia32": "386", "loong64": "loong64", "mips": "mips",
+		"mipsel": "mipsle", "ppc64": "ppc64le", "riscv64": "riscv64", "s390x": "s390x", "x64": "amd64",
+	}
+)
+
+// platformOf is the platform an image of pkg names: the one its os and cpu
+// fields name, when each names exactly one value with an OCI name, and
+// linux/amd64 otherwise. Nothing chooses an image by it. It is there because an
+// image config must name one, and a registry shows it.
+func platformOf(pkg *npmpkg.Package) (goos, arch string) {
+	goos, okOS := npmOS[onlyValue(pkg.Manifest["os"])]
+	arch, okCPU := npmCPU[onlyValue(pkg.Manifest["cpu"])]
+	if !okOS || !okCPU {
+		return "linux", "amd64"
+	}
+	// Node's ppc64 is little-endian everywhere but AIX.
+	if goos == "aix" && arch == "ppc64le" {
+		arch = "ppc64"
+	}
+	return goos, arch
+}
+
+// onlyValue is the one value a package.json os or cpu field names, as a string
+// or a list of one, and "" when it names none, several, or one it excludes.
+func onlyValue(raw json.RawMessage) string {
+	var list []string
+	var one string
+	if json.Unmarshal(raw, &one) == nil {
+		list = []string{one}
+	} else if json.Unmarshal(raw, &list) != nil {
+		return ""
+	}
+	if len(list) != 1 || strings.HasPrefix(list[0], "!") {
+		return ""
+	}
+	return list[0]
+}
+
 // keysFor is the set of annotations and labels an image of pkg carries.
-func keysFor(pkg *npmpkg.Package) (map[string]string, error) {
+// revision is the commit the tarball was built from, or "" when the caller
+// names none.
+func keysFor(pkg *npmpkg.Package, revision string) (map[string]string, error) {
 	entry, err := json.Marshal(pkg.Entry(""))
 	if err != nil {
 		return nil, err
@@ -153,7 +232,25 @@ func keysFor(pkg *npmpkg.Package) (map[string]string, error) {
 	if src := sourceURL(pkg.Manifest["repository"]); src != "" {
 		keys["org.opencontainers.image.source"] = src
 	}
+	// The commit the tarball was built from: the one the caller names, else the
+	// gitHead npm records in package.json, when that names one.
+	if revision == "" {
+		revision = gitHead(pkg.Manifest["gitHead"])
+	}
+	if revision != "" {
+		keys["org.opencontainers.image.revision"] = revision
+	}
 	return keys, nil
+}
+
+// gitHead is the commit a package.json gitHead field names, or "" when it
+// names none.
+func gitHead(raw json.RawMessage) string {
+	var sha string
+	if json.Unmarshal(raw, &sha) != nil || ValidRevision(sha) != nil {
+		return ""
+	}
+	return sha
 }
 
 // sourceURL turns package.json's `repository` into the https URL of a GitHub

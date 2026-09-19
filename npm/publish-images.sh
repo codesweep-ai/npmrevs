@@ -49,6 +49,10 @@ command -v podman >/dev/null ||
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 
+# The commit these builds come from, which each image records as
+# org.opencontainers.image.revision. Outside a git work tree there is none.
+rev="$(git rev-parse HEAD 2>/dev/null || true)"
+
 for input in "$@"; do
   if [ -d "$input" ]; then
     # An absolute path: npm reads a bare word such as `pkg` as a package on the
@@ -58,7 +62,7 @@ for input in "$@"; do
     tgz="$input"
   fi
   # shellcheck disable=SC2086 # NPMREVS may be a command with arguments
-  ref="$($NPMREVS image build "$tgz" --registry "$REGISTRY" -o "$work/image.tar" -q)"
+  ref="$($NPMREVS image build "$tgz" --registry "$REGISTRY" ${rev:+--revision "$rev"} -o "$work/image.tar" -q)"
   # shellcheck disable=SC2086
   want="$($NPMREVS image inspect "$tgz" --json | sed -n 's/.*"integrity": *"\([^"]*\)".*/\1/p' | head -1)"
 
