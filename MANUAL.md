@@ -250,7 +250,7 @@ Prints the version, the platform and the Go version the binary was built with.
 | Route | Answer |
 |---|---|
 | `GET /-/ping` | `200` once the server accepts requests |
-| `GET /-/npmrevs` | a JSON status document: the version, the server's pid, the data directories, the upstream, and how many packages and versions it holds |
+| `GET /-/npmrevs` | a JSON status document: the version, the server's pid, the data directories, the upstream, the images registry and its scopes, the strict scopes, and how many packages and versions it holds |
 | `GET /<name>` | the packument, with the name's slash escaped (`/@acme%2ftool`) or not |
 | `GET /<name>/-/<file>.tgz` | a local tarball, a `404` in a strict scope, or a `302` to the upstream's |
 | `POST /-/npm/v1/security/...` | forwarded to the upstream, so `npm audit` works |
@@ -307,7 +307,7 @@ Each message is printed after `cs-npmrevs: ` on stderr.
 **`--images-scope names scopes to look up in --images, and --images is not set`**
 Add `--images` with the registry, or drop `--images-scope`. Exit 2.
 
-**`--images needs at least one --images-scope`**
+**`--images needs at least one --images-scope: only the scopes named are looked up there`**
 Name the scopes whose packages the registry holds, such as
 `--images-scope @acme`. Exit 2.
 

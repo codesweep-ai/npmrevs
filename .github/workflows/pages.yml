@@ -1,18 +1,13 @@
 # Publish codesweep.ai/npmrevs/: the repository's documents, and the CI status file
 # that codesweep.ai/dashboards/ci reads.
 #
-# This moves the site from the branch-served build to a workflow build. The
-# reason is the status file rather than the documents: on a branch-served site
-# the branch *is* the published site, so publishing ci-status.json would mean
-# committing it on every build. Built here it is part of the deployment and never
-# enters the history. GitHub's own advice points the same way — use a workflow
-# "if you want to use a build process other than Jekyll or you do not want a
-# dedicated branch to hold your compiled static files".
+# The site is built here rather than served from a branch, because of the status
+# file: on a branch-served site the branch is the published site, so publishing
+# ci-status.json would mean committing it on every build. Built here it is part
+# of the deployment and never enters the history.
 #
 # Settings > Pages > Source has to be set to "GitHub Actions" for this to serve.
-# Until it is, this workflow runs and its deploy step fails while the live site
-# keeps being served from the branch, so the two can be compared before the
-# switch.
+# Until it is, this workflow runs and its deploy step fails.
 name: pages
 
 # Only on a finished build, deliberately.

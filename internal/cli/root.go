@@ -17,7 +17,10 @@ import (
 // devVersion marks a binary that carried no release stamp.
 const devVersion = "dev"
 
-// Version is stamped at build time by the release build.
+// Version is what a build stamps with -ldflags -X when it wants to name the
+// version itself. No build here does: the release build leaves it alone, so
+// the version comes from what the toolchain recorded, and this is the fallback
+// when it recorded none.
 var Version = devVersion
 
 // buildVersion reports the release stamp when there is one, and otherwise the

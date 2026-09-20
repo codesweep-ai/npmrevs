@@ -152,7 +152,9 @@ place, and the others link to it.
 ## Publishing to npm
 
 Every release also goes to npm as five packages: four carry the binary, one per
-platform goreleaser builds, and the wrapper picks the right one at run time.
+platform goreleaser builds, and the wrapper picks the right one at run time. The
+`npm` workflow publishes dev builds only, so a release goes out by hand with
+`make npm-publish` once its tag is built.
 Only the wrapper is written by hand, under `npm/npmrevs/`. The other four are
 generated from goreleaser's output, and nothing under `npm/dist/` is committed.
 

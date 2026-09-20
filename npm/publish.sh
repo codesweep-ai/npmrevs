@@ -12,10 +12,9 @@
 #   npm/publish.sh
 #
 # Publishing is authenticated by whatever the caller already has. In CI that is
-# a trusted publisher, so no token is kept: the workflow needs `id-token:
+# a trusted publisher, so no token is stored: the workflow needs `id-token:
 # write`, and npm mints provenance from the same OIDC identity that signs the
-# release checksums with cosign. The run that creates the packages, before any
-# of them can name a trusted publisher, uses a bootstrap token (see npm.yml).
+# release checksums with cosign.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."

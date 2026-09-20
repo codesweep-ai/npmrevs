@@ -60,7 +60,7 @@ oss:
 
   # True once the repository is public. Flip this in the same commit that makes
   # the repository public.
-  published: false
+  published: true
 
   # This repository ships a binary, so it carries the whole set.
   docSet:

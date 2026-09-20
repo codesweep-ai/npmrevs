@@ -111,15 +111,11 @@ jobs:
       - name: package
         run: node npm/build.mjs --dev
 
-      # No standing token. Each package names this workflow as a trusted
-      # publisher, so npm takes the run's own OIDC identity and mints a
-      # credential that lives for the length of the publish. npm names a trusted
-      # publisher only for a package that exists, so the run that creates the
-      # packages falls back to NPM_BOOTSTRAP_TOKEN: a short-lived token set as a
-      # secret for that run, and deleted once each package names this workflow.
-      # Unset, as it is from then on, it leaves nothing to fall back to.
+      # No token. Each package names this workflow as a trusted publisher, so npm
+      # takes the run's own OIDC identity and mints a credential that lives for
+      # the length of the publish. A stored token would be a standing key to the
+      # registry, and npm is withdrawing the ability of one to publish at all.
       - name: publish
         run: ./npm/publish.sh ${{ inputs.dry_run && '--dry-run' || '' }}
         env:
           CS_NPMREVS_NPM_TAG: dev
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_BOOTSTRAP_TOKEN }}
