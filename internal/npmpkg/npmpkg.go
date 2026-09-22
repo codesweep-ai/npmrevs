@@ -247,7 +247,7 @@ func (p *Package) HasInstallScript() bool {
 }
 
 // Entry is the version object a packument lists for this package, with its
-// tarball served from base (for example "http://127.0.0.1:4873").
+// tarball served from base (for example "http://127.0.0.1:4875").
 func (p *Package) Entry(base string) map[string]any {
 	e := make(map[string]any, len(p.Manifest)+4)
 	for k, v := range p.Manifest {

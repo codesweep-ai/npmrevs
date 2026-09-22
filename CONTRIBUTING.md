@@ -161,7 +161,8 @@ generated from goreleaser's output, and nothing under `npm/dist/` is committed.
 ```bash
 make npm-snapshot   # build every target, package it, and show what would publish
 make npm-build      # package whatever dist/ already holds
-make npm-local      # serve a dev build from this machine, and print how to install it
+make npm-pack       # package a dev build into cs-npmrevs's data directory
+make npm-local      # the same, then serve it, and print how to install it
 make npm-publish    # platform packages first, then the wrapper
 ```
 
@@ -173,10 +174,12 @@ Running `npm/publish.sh` again is safe. It skips each package the registry
 already has from this commit, and stops on one it has from another commit.
 
 `make npm-local` is how to try a package before publishing it. It packs the
-five packages into `npm/.local-registry/data/`, serves them with the cs-npmrevs it
-just built, and prints the install command. Run it after every change: a
-rebuild of the same commit replaces the last run's tarballs.
-`npm/local-registry.sh stop` stops the server.
+five packages into cs-npmrevs's default data directory, serves them with the
+cs-npmrevs it just built, and prints the install command. Run it after every
+change: a rebuild of the same commit replaces the last run's tarballs.
+`npm/local-registry.sh stop` stops the server. Every project's build shares
+that directory, so `make npm-pack` alone leaves a build for a later one to
+install through cs-npmrevs on port 4875. `make install` runs it too.
 
 These variables belong to the packaging rather than to the tool, which is why
 [`MANUAL.md`](MANUAL.md) does not carry them:
@@ -186,7 +189,8 @@ These variables belong to the packaging rather than to the tool, which is why
 | `CS_NPMREVS_BINARY` | The binary the npm wrapper runs, so the packaging can be tried against a local build. |
 | `CS_NPMREVS_NPM_VERSION` | The version the generated packages carry. A tagged release supplies its own. |
 | `CS_NPMREVS_NPM_TAG` | The channel a prerelease is published to, `next` unless it says otherwise. |
-| `CS_NPMREVS_REGISTRY_PORT` | The port `make npm-local` serves on, 4873 unless it says otherwise. |
+| `CS_NPMREVS_PORT` | The port `make npm-local` serves on, 4875 unless it says otherwise. |
+| `CS_NPMREVS_IMAGES`, `CS_NPMREVS_SCOPE` | The images registry and the scope `make npm-local` serves beside the data directory, `ghcr.io` and `@codesweep-ai` unless they say otherwise. |
 | `NPMREVS` | The command `npm/local-registry.sh` and `npm/publish-images.sh` run as cs-npmrevs. `make` passes the binary it built, and by hand they run `cs-npmrevs` from the PATH. |
 | `REGISTRY` | The registry `npm/publish-images.sh` publishes to, `ghcr.io` unless it says otherwise. |
 

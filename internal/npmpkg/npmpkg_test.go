@@ -136,7 +136,7 @@ func TestEntryIsWhatAPackumentLists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	raw, err := json.Marshal(p.Entry("http://127.0.0.1:4873/"))
+	raw, err := json.Marshal(p.Entry("http://127.0.0.1:4875/"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestEntryIsWhatAPackumentLists(t *testing.T) {
 	if e.ID != "@acme/tool@1.0.0" || e.Bin["tool"] != "cli.js" || len(e.OS) != 1 || !e.HasShrinkwrap {
 		t.Fatalf("entry %s", raw)
 	}
-	if e.Dist.Tarball != "http://127.0.0.1:4873/@acme/tool/-/tool-1.0.0.tgz" || e.Dist.Integrity != p.Integrity || e.Dist.FileCount != 2 {
+	if e.Dist.Tarball != "http://127.0.0.1:4875/@acme/tool/-/tool-1.0.0.tgz" || e.Dist.Integrity != p.Integrity || e.Dist.FileCount != 2 {
 		t.Fatalf("dist %+v", e.Dist)
 	}
 	noBase, _ := json.Marshal(p.Entry(""))

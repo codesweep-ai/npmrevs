@@ -76,7 +76,7 @@ that package answer an error until one is removed.
 Point npm at it for every package, not only your own scope:
 
 ```ini
-registry=http://127.0.0.1:4873/
+registry=http://127.0.0.1:4875/
 ```
 
 `--strict @scope` serves that scope from local versions only. A package of the
@@ -224,7 +224,7 @@ Prints the version, the platform and the Go version the binary was built with.
 |---|---|---|
 | `--data DIR` | serve | A directory of `.tgz` files to serve. Repeatable. Default: see Configuration. |
 | `--data DIR` | extract, fetch | The directory to write into. Default: see Configuration. |
-| `--listen ADDR` | serve | The address to listen on. Default `127.0.0.1:4873`. Port 0 picks a free one. |
+| `--listen ADDR` | serve | The address to listen on. Default `127.0.0.1:4875`, clear of Verdaccio's 4873. Port 0 picks a free one. |
 | `--print-port` | serve | Print the port on stdout, as one line, once listening. |
 | `--upstream URL` | serve | The registry every other package comes from. Default `https://registry.npmjs.org`. |
 | `--images REGISTRY` | serve | A container registry of per-version images, such as `ghcr.io`. Needs `--images-scope`. |
@@ -327,7 +327,7 @@ The subcommand is missing or misspelled. Exit 2.
 Two tarballs claim one version. Keep the one you mean and delete the other. At
 startup this exits 1; while serving, that package answers `500`.
 
-**`listen tcp 127.0.0.1:4873: bind: address already in use`**
+**`listen tcp 127.0.0.1:4875: bind: address already in use`**
 Another program has the port. Stop it, or pass another `--listen`. Exit 1.
 
 **`… no such file, and not an image reference such as ghcr.io/owner/npm/name:1.0.0`**
@@ -415,7 +415,7 @@ Serve a build from a data directory, and install it:
 mkdir -p ./data
 npm pack ./my-package --pack-destination ./data
 cs-npmrevs serve --data ./data &
-printf 'registry=http://127.0.0.1:4873/\n' > /tmp/npmrc
+printf 'registry=http://127.0.0.1:4875/\n' > /tmp/npmrc
 NPM_CONFIG_USERCONFIG=/tmp/npmrc npm install my-package@1.0.0
 ```
 

@@ -45,7 +45,7 @@ go install github.com/codesweep-ai/npmrevs/cmd/cs-npmrevs@latest
 mkdir -p ~/npmrevs-data
 npm pack ./my-package --pack-destination ~/npmrevs-data
 cs-npmrevs serve --data ~/npmrevs-data &
-printf 'registry=http://127.0.0.1:4873/\n' > ~/npmrevs.npmrc
+printf 'registry=http://127.0.0.1:4875/\n' > ~/npmrevs.npmrc
 NPM_CONFIG_USERCONFIG=~/npmrevs.npmrc npm install my-package@1.0.0
 ```
 

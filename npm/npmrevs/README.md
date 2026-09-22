@@ -32,7 +32,7 @@ npm install --save-dev @codesweep-ai/npmrevs
 mkdir -p ./data
 npm pack ./my-package --pack-destination ./data
 npx cs-npmrevs serve --data ./data &
-printf 'registry=http://127.0.0.1:4873/\n' > .npmrevs.npmrc
+printf 'registry=http://127.0.0.1:4875/\n' > .npmrevs.npmrc
 NPM_CONFIG_USERCONFIG=.npmrevs.npmrc npm install my-package@1.0.0
 ```
 

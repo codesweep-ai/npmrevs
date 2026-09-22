@@ -195,7 +195,7 @@ scratch` image reaches npmjs.com and ghcr.io with nothing added. Inside a
 container it has to listen on every interface, so the port can be published:
 
 ```bash
-cs-npmrevs serve --listen 0.0.0.0:4873 --data /data
+cs-npmrevs serve --listen 0.0.0.0:4875 --data /data
 ```
 
 ## State and cache locations

@@ -221,7 +221,7 @@ const loopbackLock = `{
     "": {},
     "node_modules/@acme/tool": {
       "version": "1.0.0",
-      "resolved": "http://127.0.0.1:4873/@acme/tool/-/tool-1.0.0.tgz",
+      "resolved": "http://127.0.0.1:4875/@acme/tool/-/tool-1.0.0.tgz",
       "integrity": "sha512-local"
     }
   }

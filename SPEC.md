@@ -499,7 +499,7 @@ For example, the image of `@acme/tool` 1.0.0 carries:
   "server": "cs-npmrevs",
   "version": "v0.1.0",
   "pid": 41733,
-  "data": ["/home/ada/proj/npm/.local-registry/data"],
+  "data": ["/home/ada/.local/share/cs-npmrevs/data"],
   "upstream": "https://registry.npmjs.org",
   "packages": 5,
   "versions": 5

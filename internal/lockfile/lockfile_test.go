@@ -27,12 +27,12 @@ const v3 = `{
     },
     "node_modules/@acme/tool": {
       "version": "1.1.0",
-      "resolved": "http://127.0.0.1:4873/@acme/tool/-/tool-1.1.0.tgz",
+      "resolved": "http://127.0.0.1:4875/@acme/tool/-/tool-1.1.0.tgz",
       "integrity": "sha512-local"
     },
     "node_modules/other/node_modules/@acme/tool": {
       "version": "1.1.0",
-      "resolved": "http://127.0.0.1:4873/@acme/tool/-/tool-1.1.0.tgz",
+      "resolved": "http://127.0.0.1:4875/@acme/tool/-/tool-1.1.0.tgz",
       "integrity": "sha512-local"
     },
     "node_modules/left-pad": {
@@ -42,7 +42,7 @@ const v3 = `{
     },
     "node_modules/@acme/private": {
       "version": "0.0.1",
-      "resolved": "http://localhost:4873/@acme/private/-/private-0.0.1.tgz",
+      "resolved": "http://localhost:4875/@acme/private/-/private-0.0.1.tgz",
       "integrity": "sha512-private"
     }
   }
@@ -63,7 +63,7 @@ func TestLocalFindsEveryLoopbackEntry(t *testing.T) {
 }
 
 func TestLocalReadsAVersionOneLockfile(t *testing.T) {
-	v1 := `{"lockfileVersion":1,"dependencies":{"@acme/tool":{"version":"1.1.0","resolved":"http://[::1]:4873/@acme/tool/-/tool-1.1.0.tgz",
+	v1 := `{"lockfileVersion":1,"dependencies":{"@acme/tool":{"version":"1.1.0","resolved":"http://[::1]:4875/@acme/tool/-/tool-1.1.0.tgz",
 	"dependencies":{"inner":{"version":"2.0.0","resolved":"http://localhost:1/inner/-/inner-2.0.0.tgz"}}}}}`
 	entries, err := lockfile.Local([]byte(v1))
 	if err != nil || len(entries) != 2 || entries[1].Key != "node_modules/@acme/tool/node_modules/inner" {
@@ -76,7 +76,7 @@ func TestLocalReadsAVersionOneLockfile(t *testing.T) {
 
 func TestIsLoopback(t *testing.T) {
 	for u, want := range map[string]bool{
-		"http://127.0.0.1:4873/x": true, "http://localhost/x": true, "http://[::1]:1/x": true,
+		"http://127.0.0.1:4875/x": true, "http://localhost/x": true, "http://[::1]:1/x": true,
 		"http://127.1.2.3/x": true, "https://registry.npmjs.org/x": false, "file:../x": false, "": false,
 	} {
 		if lockfile.IsLoopback(u) != want {
@@ -111,7 +111,7 @@ func TestPlanRefusesAVersionTheTargetLacks(t *testing.T) {
 func TestApplyChangesOnlyTheURLsAndIntegrities(t *testing.T) {
 	without := strings.Replace(v3, `    "node_modules/@acme/private": {
       "version": "0.0.1",
-      "resolved": "http://localhost:4873/@acme/private/-/private-0.0.1.tgz",
+      "resolved": "http://localhost:4875/@acme/private/-/private-0.0.1.tgz",
       "integrity": "sha512-private"
     }`, `    "node_modules/@acme/private": {
       "version": "0.0.1"
@@ -127,7 +127,7 @@ func TestApplyChangesOnlyTheURLsAndIntegrities(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := strings.ReplaceAll(without, "http://127.0.0.1:4873/@acme/tool/-/tool-1.1.0.tgz", "https://registry.example.org/@acme/tool/-/tool-1.1.0.tgz")
+	want := strings.ReplaceAll(without, "http://127.0.0.1:4875/@acme/tool/-/tool-1.1.0.tgz", "https://registry.example.org/@acme/tool/-/tool-1.1.0.tgz")
 	want = strings.ReplaceAll(want, "sha512-local", "sha512-published")
 	if string(out) != want {
 		t.Fatalf("got\n%s\nwant\n%s", out, want)
@@ -158,12 +158,12 @@ func TestApplyRewritesEachPairAndNothingElse(t *testing.T) {
   "packages": {
     "node_modules/@acme/tool": {
       "version": "1.1.0",
-      "resolved": "http://127.0.0.1:4873/@acme/tool/-/tool-1.1.0.tgz",
+      "resolved": "http://127.0.0.1:4875/@acme/tool/-/tool-1.1.0.tgz",
       "integrity": "sha512-new-build"
     },
     "node_modules/other/node_modules/@acme/tool": {
       "version": "1.1.0",
-      "resolved": "http://127.0.0.1:4873/@acme/tool/-/tool-1.1.0.tgz",
+      "resolved": "http://127.0.0.1:4875/@acme/tool/-/tool-1.1.0.tgz",
       "integrity": "sha512-old-build"
     },
     "node_modules/vendored": {

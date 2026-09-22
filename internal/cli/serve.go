@@ -20,9 +20,10 @@ import (
 	"github.com/codesweep-ai/npmrevs/internal/registry"
 )
 
-// DefaultListen is where serve listens unless told otherwise: npm's
-// conventional local registry port, on loopback only.
-const DefaultListen = "127.0.0.1:4873"
+// DefaultListen is where serve listens unless told otherwise, on loopback only.
+// Not 4873, which is Verdaccio's, nor 4874, which unpkg takes, so cs-npmrevs
+// can run beside either.
+const DefaultListen = "127.0.0.1:4875"
 
 // DefaultUpstream is the registry every package without a local version comes
 // from.
