@@ -1,0 +1,20 @@
+{
+  "id": "NRV-002",
+  "title": "A passing lockfile check prints nothing, so a log cannot tell a clean lockfile from a vacuous one",
+  "type": "defect",
+  "severity": "low",
+  "status": "in-progress",
+  "foundBy": "deps-maintenance campaigns: pilot1's frontend seat measured the silent pass in its d006 reply, and pilot2's findings.md item 10 records qa building controls before trusting it",
+  "opened": "2026-09-22",
+  "resolved": null,
+  "stint": "pilot2-tier3",
+  "evidence": {
+    "commits": [],
+    "integrated": [],
+    "verified": null
+  },
+  "resolution": null,
+  "details": "`cs-npmrevs lockfile check` exits 0 and prints nothing when no entry resolved through a loopback address. It does the same on a lockfile with no `resolved` entries at all. Pilot1's frontend seat measured exit 0 and no output on a lockfile whose only package was the root. A log therefore cannot tell a clean lockfile from a vacuous one, or from a check that never ran. In pilot2, qa built two controls before any use of the check meant anything, and seats in both pilots reported it as passed with nothing to show.\n\nThe file it read is not visible either. Under `go -C ~/tracer tool cs-npmrevs lockfile check`, a relative path resolves against `~/tracer`, so a pass can vouch for a lockfile other than the one meant. The usage does not say that a relative path is read from the working directory.\n\nA passing check should say what it checked: the file's absolute path, how many entries carry a resolved URL, and that none of them resolved through this machine.",
+  "notes": [],
+  "links": []
+}
