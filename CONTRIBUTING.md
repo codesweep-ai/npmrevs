@@ -46,7 +46,8 @@ that has to pass.
 No linter needs installing. The ones it shells out to are pinned Go tools,
 built from the module cache the first time you run them: `golangci-lint`,
 `deadcode`, `actionlint`, `cs-lint` and `cs-ledger`. `make repin` moves the
-`cs-` pins to the branch tip, and `make versions` prints the version of each.
+`cs-` pins to the last commit each one's CI passed, and `make versions` prints
+the version of each.
 
 Two programs are still expected on the PATH. `goreleaser` validates the release
 manifest, and `make build` falls back to `go build` where it is absent. `npm`
