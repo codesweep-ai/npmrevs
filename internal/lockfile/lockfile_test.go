@@ -74,6 +74,28 @@ func TestLocalReadsAVersionOneLockfile(t *testing.T) {
 	}
 }
 
+// Scan counts only the entries that carry a resolved URL: the root and a linked
+// workspace resolve nowhere, and counting them would make an empty check look
+// like a thorough one.
+func TestScanCountsTheEntriesThatResolve(t *testing.T) {
+	cases := []struct {
+		name            string
+		lock            string
+		resolved, local int
+	}{
+		{"version 3", v3, 4, 3},
+		{"version 1", `{"lockfileVersion":1,"dependencies":{"a":{"version":"1.0.0","resolved":"https://registry.npmjs.org/a/-/a-1.0.0.tgz",
+		"dependencies":{"b":{"version":"2.0.0","resolved":"http://localhost:1/b/-/b-2.0.0.tgz"}}}}}`, 2, 1},
+		{"nothing resolved", `{"lockfileVersion":3,"packages":{"":{"name":"x"},"node_modules/ws":{"link":true}}}`, 0, 0},
+	}
+	for _, c := range cases {
+		resolved, local, err := lockfile.Scan([]byte(c.lock))
+		if err != nil || resolved != c.resolved || len(local) != c.local {
+			t.Errorf("%s: resolved %d, local %d, err %v; want %d and %d", c.name, resolved, len(local), err, c.resolved, c.local)
+		}
+	}
+}
+
 func TestIsLoopback(t *testing.T) {
 	for u, want := range map[string]bool{
 		"http://127.0.0.1:4875/x": true, "http://localhost/x": true, "http://[::1]:1/x": true,

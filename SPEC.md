@@ -422,7 +422,9 @@ archive, a `docker save` archive, and an OCI image layout directory.
 ## 7. Lockfiles
 
 **R49.** `lockfile check` **MUST** list every entry whose `resolved` URL is a
-loopback address, and **MUST** exit `1` when there is one.
+loopback address, and **MUST** exit `1` when there is one. When there is none,
+it **MUST** print the lockfile's absolute path and how many entries carry a
+`resolved` URL, so a pass shows what it checked.
 
 **R50.** `lockfile rewrite` **MUST** look each such entry up on the target
 registry, and take the target's tarball URL and integrity for it.

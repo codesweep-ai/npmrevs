@@ -61,35 +61,49 @@ type lockDep struct {
 // Local lists the entries of the lockfile in data that resolved through a
 // loopback address, sorted by key.
 func Local(data []byte) ([]Entry, error) {
+	_, local, err := Scan(data)
+	return local, err
+}
+
+// Scan reads the lockfile in data. It counts the entries that carry a resolved
+// URL, which are the ones that could have come through this machine, and lists
+// those that did, as Local does.
+func Scan(data []byte) (resolved int, local []Entry, err error) {
 	var l lock
 	if err := json.Unmarshal(data, &l); err != nil {
-		return nil, fmt.Errorf("not a package-lock.json: %w", err)
+		return 0, nil, fmt.Errorf("not a package-lock.json: %w", err)
 	}
-	var out []Entry
 	for key, p := range l.Packages {
-		if key == "" || !IsLoopback(p.Resolved) {
+		if key == "" || p.Resolved == "" {
+			continue
+		}
+		resolved++
+		if !IsLoopback(p.Resolved) {
 			continue
 		}
 		name := p.Name
 		if name == "" {
 			name = nameFromKey(key)
 		}
-		out = append(out, Entry{Key: key, Name: name, Version: p.Version, Resolved: p.Resolved, Integrity: p.Integrity})
+		local = append(local, Entry{Key: key, Name: name, Version: p.Version, Resolved: p.Resolved, Integrity: p.Integrity})
 	}
 	if l.Packages == nil {
-		walkV1(l.Dependencies, "", &out)
+		walkV1(l.Dependencies, "", &resolved, &local)
 	}
-	slices.SortFunc(out, func(a, b Entry) int { return strings.Compare(a.Key, b.Key) })
-	return out, nil
+	slices.SortFunc(local, func(a, b Entry) int { return strings.Compare(a.Key, b.Key) })
+	return resolved, local, nil
 }
 
-func walkV1(deps map[string]lockDep, prefix string, out *[]Entry) {
+func walkV1(deps map[string]lockDep, prefix string, resolved *int, out *[]Entry) {
 	for name, d := range deps {
 		key := prefix + "node_modules/" + name
+		if d.Resolved != "" {
+			*resolved++
+		}
 		if IsLoopback(d.Resolved) {
 			*out = append(*out, Entry{Key: key, Name: name, Version: d.Version, Resolved: d.Resolved, Integrity: d.Integrity})
 		}
-		walkV1(d.Dependencies, key+"/", out)
+		walkV1(d.Dependencies, key+"/", resolved, out)
 	}
 }
 

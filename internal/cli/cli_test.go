@@ -262,11 +262,26 @@ func TestLockfileCheckAndRewrite(t *testing.T) {
 	if r := cs(t, nil, "lockfile", "rewrite", lock, "--to", target.URL); r.code != exitOK {
 		t.Fatalf("%+v", r)
 	}
-	if r := cs(t, nil, "lockfile", "check", lock); r.code != exitOK {
+	if r := cs(t, nil, "lockfile", "check", lock); r.code != exitOK || r.stdout != lock+": 0 of 1 entries resolved through this machine\n" {
 		t.Fatalf("after the rewrite: %+v", r)
 	}
 	if r := cs(t, nil, "lockfile", "check", filepath.Join(dir, "missing.json")); r.code != exitFailed {
 		t.Fatalf("a missing lockfile: %+v", r)
+	}
+}
+
+// A pass names the file it read and how many entries it looked at, so a log
+// shows a lockfile with nothing to check, and a relative path read from a
+// directory other than the one meant, for what they are.
+func TestLockfileCheckSaysWhatItChecked(t *testing.T) {
+	dir := t.TempDir()
+	t.Chdir(dir)
+	if err := os.WriteFile("package-lock.json", []byte(`{"lockfileVersion":3,"packages":{"":{"name":"x"}}}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Join(dir, "package-lock.json") + ": 0 of 0 entries resolved through this machine\n"
+	if r := cs(t, nil, "lockfile", "check"); r.code != exitOK || r.stdout != want {
+		t.Fatalf("got %+v, want stdout %q", r, want)
 	}
 }
 

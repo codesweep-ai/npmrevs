@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -33,7 +34,10 @@ func lockfileCheckCmd(a *app) *cobra.Command {
 		Use:   "check [FILE]",
 		Short: "List the entries that resolved through a loopback address",
 		Long: "List every entry of FILE (default package-lock.json) whose resolved URL is a\n" +
-			"loopback address, and exit 1 when there is one. It reads nothing but the file.",
+			"loopback address, and exit 1 when there is one. When there is none, print\n" +
+			"the file's absolute path and how many entries carry a resolved URL, so a pass\n" +
+			"shows what it checked. A relative FILE is read from the working directory.\n" +
+			"It reads nothing but the file.",
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(_ *cobra.Command, args []string) error {
 			path := lockPath(args)
@@ -41,7 +45,7 @@ func lockfileCheckCmd(a *app) *cobra.Command {
 			if err != nil {
 				return failed(err)
 			}
-			entries, err := lockfile.Local(data)
+			resolved, entries, err := lockfile.Scan(data)
 			if err != nil {
 				return failed(fmt.Errorf("%s: %w", path, err))
 			}
@@ -51,6 +55,12 @@ func lockfileCheckCmd(a *app) *cobra.Command {
 			if len(entries) > 0 {
 				return failed(fmt.Errorf("%s: %d entries resolved through this machine; run `cs-npmrevs lockfile rewrite`", path, len(entries)))
 			}
+			// The absolute path, because `go -C` and scripts move the working
+			// directory, and a relative one cannot say which file passed.
+			if abs, err := filepath.Abs(path); err == nil {
+				path = abs
+			}
+			fmt.Fprintf(a.stdout, "%s: 0 of %d entries resolved through this machine\n", path, resolved)
 			return nil
 		},
 	}

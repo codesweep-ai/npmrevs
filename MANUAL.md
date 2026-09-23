@@ -178,6 +178,17 @@ URL is on this machine, and exits 1 when there is one. A lockfile written
 through `serve` names the server for each local version, and installs nowhere
 the server is not running. Run this before committing one.
 
+When no entry is on this machine, it prints one line. The line names the file by
+its absolute path, and counts the entries that carry a `resolved` URL:
+
+```
+/home/ada/app/package-lock.json: 0 of 237 entries resolved through this machine
+```
+
+A count of 0 means the lockfile names no tarball at all, so the pass checked
+nothing. A relative path is read from the working directory, which `go -C`
+moves, so read the path the line prints.
+
 ### lockfile rewrite
 
 ```
