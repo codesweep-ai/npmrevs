@@ -46,8 +46,8 @@ that has to pass.
 No linter needs installing. The ones it shells out to are pinned Go tools,
 built from the module cache the first time you run them: `golangci-lint`,
 `deadcode`, `actionlint`, `cs-lint` and `cs-ledger`. `make repin` moves the
-`cs-` pins to the last commit each one's CI passed, and `make versions` prints
-the version of each.
+`cs-` pins to the last commit each one's CI built, and leaves one whose project
+names none. `make versions` prints the version of each.
 
 Two programs are still expected on the PATH. `goreleaser` validates the release
 manifest, and `make build` falls back to `go build` where it is absent. `npm`
@@ -205,7 +205,10 @@ These variables belong to the packaging rather than to the tool, which is why
 
 The `npm` workflow publishes every commit on main that passes `ci` to the `dev`
 channel, cutting no tag and making no release. It runs when `ci` finishes, and
-skips a commit that is no longer main's head by then. It stores no credential:
+builds the commit `ci` tested. It skips that commit once main's head changes
+more than `ledger/` after it, and the head publishes when its own `ci` passes.
+Every publish also writes an `npm` commit status to its commit, a failed one
+included. It stores no credential:
 each package names the workflow as a trusted publisher. A trusted publisher can
 only be added to a package that exists, so the first publish runs
 `npm/publish.sh` from a machine logged in to npm.
@@ -225,6 +228,12 @@ so nobody publishes them by hand. `npm/publish-images.sh` builds each with
 `cs-npmrevs image build` and pushes it with podman, skipping a version already
 published with the same bytes. The `prune-images` workflow keeps the newest 20
 versions of each package.
+
+Each run posts a `publish images` commit status on the commit it published: a
+success once the wrapper is pushed, a failure otherwise. GitHub lists the run
+under main's head when `ci` finished, which can be a later commit. The CI status
+file reads the registry instead, and lists a commit as built, one a sibling can
+pin, once its wrapper's version is there.
 
 `make images-snapshot` builds the images of whatever `npm/dist/` holds and pushes
 nothing. The script is shared with lint, ledger and ui, so change all four
