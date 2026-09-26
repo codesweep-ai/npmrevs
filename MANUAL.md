@@ -44,7 +44,10 @@ A version cs-npmrevs holds is a **local version**. It is written into the packag
 **packument**, the document npm reads to pick a version, beside the versions the
 **upstream** publishes. The upstream is npmjs.com unless you name another. A
 local version takes the place of a published one with the same number, so a
-build of a commit installs under the version it will be published as.
+build of a commit installs under the version it will be published as. One whose
+bytes differ from the published version's is still served, with a warning in the
+log naming both integrities. A lockfile written through it would not install
+from the published copy.
 
 For what cs-npmrevs guarantees and how it is built, see [SPEC.md](SPEC.md).
 

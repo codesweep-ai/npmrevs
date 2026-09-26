@@ -77,3 +77,36 @@ func TestImagesAreServedAndABrokenOneIsLeftOut(t *testing.T) {
 		t.Fatalf("tarball %d", resp.StatusCode)
 	}
 }
+
+// A data directory's version takes the place of an image's (R24), and says so
+// when its bytes are other than the image's.
+func TestADataDirectoryVersionWithOtherBytesThanItsImageIsWarnedOf(t *testing.T) {
+	reg := httptest.NewServer(ggcrregistry.New())
+	defer reg.Close()
+	host := strings.TrimPrefix(reg.URL, "http://")
+	pushImage(t, host, testpkg.Manifest("@acme/tool", "1.0.0"), nil)
+	dir := t.TempDir()
+	testpkg.Write(t, dir, testpkg.Manifest("@acme/tool", "1.0.0"), map[string]string{"local.js": "1"})
+
+	up := newUpstream(t, nil)
+	idx, err := datadir.Open([]string{dir}, slog.New(slog.DiscardHandler))
+	if err != nil {
+		t.Fatal(err)
+	}
+	logs := &syncBuffer{}
+	u, _ := url.Parse(up.URL)
+	srv := httptest.NewServer(registry.New(registry.Config{
+		Index: idx, Upstream: u, Version: "test", UpstreamTTL: time.Minute,
+		Images: &images.Source{Client: &images.Client{}, Registry: host, Scopes: []string{"@acme"}, CacheDir: t.TempDir(), TagsTTL: time.Minute},
+		Log:    slog.New(slog.NewTextHandler(logs, nil)),
+	}))
+	defer srv.Close()
+
+	if resp, body := get(t, srv.URL+"/@acme%2ftool"); resp.StatusCode != http.StatusOK {
+		t.Fatalf("%d %s", resp.StatusCode, body)
+	}
+	if !strings.Contains(logs.String(), "a local version takes the place of a published one with other bytes") ||
+		!strings.Contains(logs.String(), `published="its image"`) {
+		t.Fatalf("no warning naming the image:\n%s", logs)
+	}
+}

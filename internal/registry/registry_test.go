@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -418,5 +419,83 @@ func TestStatusCountsFollowTheDirectory(t *testing.T) {
 	var st registry.Status
 	if err := json.Unmarshal(body, &st); err != nil || st.Versions != 1 || st.PID != os.Getpid() {
 		t.Fatalf("status %s", body)
+	}
+}
+
+// syncBuffer is a log sink the server's goroutines can write while a test reads.
+type syncBuffer struct {
+	mu sync.Mutex
+	b  strings.Builder
+}
+
+func (s *syncBuffer) Write(p []byte) (int, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.Write(p)
+}
+
+func (s *syncBuffer) String() string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.b.String()
+}
+
+// TestALocalVersionWithOtherBytesThanThePublishedOneIsWarnedOf: a local build
+// of a published version still takes its place (R9), and says so when its bytes
+// differ, since a lockfile written through it then names an integrity no
+// published copy has. Once per shadowing, however often the packument is asked
+// for, and never when the bytes are the same.
+func TestALocalVersionWithOtherBytesThanThePublishedOneIsWarnedOf(t *testing.T) {
+	dir := t.TempDir()
+	testpkg.Write(t, dir, testpkg.Manifest("@acme/tool", "1.0.0"), map[string]string{"local.js": "1"})
+	logs := &syncBuffer{}
+	start := func(doc string) *httptest.Server {
+		up := newUpstream(t, map[string]string{"@acme/tool": doc})
+		idx, err := datadir.Open([]string{dir}, slog.New(slog.DiscardHandler))
+		if err != nil {
+			t.Fatal(err)
+		}
+		u, _ := url.Parse(up.URL)
+		srv := httptest.NewServer(registry.New(registry.Config{
+			Index: idx, Upstream: u, Version: "test", UpstreamTTL: time.Minute,
+			Log: slog.New(slog.NewTextHandler(logs, nil)),
+		}))
+		t.Cleanup(srv.Close)
+		return srv
+	}
+	const warning = "a local version takes the place of a published one with other bytes"
+
+	srv := start(publishedTool)
+	for range 2 {
+		if resp, body := get(t, srv.URL+"/@acme%2ftool"); resp.StatusCode != http.StatusOK {
+			t.Fatalf("packument: %d %s", resp.StatusCode, body)
+		}
+	}
+	if got := strings.Count(logs.String(), warning); got != 1 {
+		t.Fatalf("warned %d times, want once:\n%s", got, logs)
+	}
+	for _, want := range []string{"version=1.0.0", `integrity="sha512-`, "publishedIntegrity=sha512-published", dir} {
+		if !strings.Contains(logs.String(), want) {
+			t.Errorf("the warning does not say %q:\n%s", want, logs)
+		}
+	}
+
+	// The same bytes published, as a clean build of a pushed commit gives.
+	_, body := get(t, srv.URL+"/@acme%2ftool")
+	var doc packument
+	if err := json.Unmarshal(body, &doc); err != nil {
+		t.Fatal(err)
+	}
+	var local struct {
+		Dist struct{ Integrity string } `json:"dist"`
+	}
+	if err := json.Unmarshal(doc.Versions["1.0.0"], &local); err != nil {
+		t.Fatal(err)
+	}
+	*logs = syncBuffer{}
+	same := start(strings.Replace(publishedTool, `"integrity":"sha512-published"`, `"integrity":"`+local.Dist.Integrity+`"`, 1))
+	get(t, same.URL+"/@acme%2ftool")
+	if strings.Contains(logs.String(), warning) {
+		t.Errorf("warned of a local version whose bytes are the published ones:\n%s", logs)
 	}
 }

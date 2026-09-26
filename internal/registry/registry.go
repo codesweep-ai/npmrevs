@@ -6,7 +6,8 @@
 // with one gets a packument built on request: the upstream's document with
 // every local version written into it, a local version taking the place of a
 // published one with the same number. Nothing is precomputed, so nothing goes
-// stale.
+// stale. One that takes the place of a published version with other bytes is
+// still served, and logged as a warning.
 package registry
 
 import (
@@ -61,6 +62,10 @@ type Server struct {
 
 	mu    sync.Mutex
 	cache map[string]cachedDoc
+
+	// warned holds each shadowing already logged, so a packument asked for on
+	// every install says it once.
+	warned sync.Map
 }
 
 type cachedDoc struct {
@@ -193,7 +198,7 @@ func (s *Server) packument(w http.ResponseWriter, r *http.Request, name string) 
 		notFound(w)
 		return
 	}
-	entries, times, err := s.localEntries(r, name)
+	entries, times, local, err := s.localEntries(r, name)
 	var conflict *datadir.ConflictError
 	switch {
 	case errors.As(err, &conflict):
@@ -231,6 +236,7 @@ func (s *Server) packument(w http.ResponseWriter, r *http.Request, name string) 
 	contentType := "application/json"
 	if up != nil {
 		body, contentType = up.body, up.contentType
+		s.warnShadowed(name, "the upstream registry", upstreamIntegrities(body), local)
 	}
 	doc, err := merge(name, body, entries, times)
 	if err != nil {
@@ -245,16 +251,18 @@ func (s *Server) packument(w http.ResponseWriter, r *http.Request, name string) 
 
 // localEntries returns the version objects of every local version of name, from
 // the images first and the data directories over them, with the times the
-// packument reports for them.
-func (s *Server) localEntries(r *http.Request, name string) (map[string]json.RawMessage, map[string]time.Time, error) {
+// packument reports for them, and where each came from.
+func (s *Server) localEntries(r *http.Request, name string) (map[string]json.RawMessage, map[string]time.Time, map[string]localVersion, error) {
 	base := "http://" + r.Host
 	entries := map[string]json.RawMessage{}
 	times := map[string]time.Time{}
+	from := map[string]localVersion{}
 
+	imaged := map[string]string{}
 	if s.cfg.Images != nil {
 		metas, err := s.cfg.Images.Versions(r.Context(), name)
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		for v, md := range metas {
 			e, err := withTarball(md, base+"/"+npmpkg.TarballPath(name, v))
@@ -263,22 +271,75 @@ func (s *Server) localEntries(r *http.Request, name string) (map[string]json.Raw
 				continue
 			}
 			entries[v] = e
+			imaged[v] = md.Integrity
+			from[v] = localVersion{where: "its image", integrity: md.Integrity}
 		}
 	}
 
 	local, err := s.cfg.Index.Versions(name)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
+	data := map[string]localVersion{}
 	for v, p := range local {
 		e, err := json.Marshal(p.Entry(base))
 		if err != nil {
-			return nil, nil, err
+			return nil, nil, nil, err
 		}
 		entries[v] = e
 		times[v] = p.ModTime
+		data[v] = localVersion{where: p.Path, integrity: p.Integrity}
+		from[v] = data[v]
 	}
-	return entries, times, nil
+	s.warnShadowed(name, "its image", imaged, data)
+	return entries, times, from, nil
+}
+
+// localVersion is where a local version was read from, and its integrity.
+type localVersion struct {
+	where     string
+	integrity string
+}
+
+// warnShadowed logs every local version that takes the place of one in
+// published (version to integrity) with other bytes. Serving it is what R9 and
+// R24 ask for: trying a local build under the number its published counterpart
+// carries is the point. But an install through here then records an integrity
+// no published copy has, and the next machine to install that lockfile from the
+// published copy fails, so it is not done in silence.
+func (s *Server) warnShadowed(name, source string, published map[string]string, local map[string]localVersion) {
+	for v, l := range local {
+		pub, ok := published[v]
+		if !ok || pub == "" || l.integrity == "" || pub == l.integrity {
+			continue
+		}
+		if _, seen := s.warned.LoadOrStore(name+"@"+v+"\x00"+l.integrity+"\x00"+pub, true); seen {
+			continue
+		}
+		s.cfg.Log.Warn("a local version takes the place of a published one with other bytes",
+			"package", name, "version", v, "local", l.where, "integrity", l.integrity,
+			"published", source, "publishedIntegrity", pub)
+	}
+}
+
+// upstreamIntegrities reads the integrity of each version out of a packument,
+// full or abbreviated. A document it cannot read yields none: merge reports it.
+func upstreamIntegrities(body []byte) map[string]string {
+	var doc struct {
+		Versions map[string]struct {
+			Dist struct {
+				Integrity string `json:"integrity"`
+			} `json:"dist"`
+		} `json:"versions"`
+	}
+	out := map[string]string{}
+	if json.Unmarshal(body, &doc) != nil {
+		return out
+	}
+	for v, e := range doc.Versions {
+		out[v] = e.Dist.Integrity
+	}
+	return out
 }
 
 // withTarball is the version object an image carried, with dist.tarball set to

@@ -243,6 +243,15 @@ packument, with every local version written into its `versions`.
 same number. *A local build of a commit carries the version its published
 counterpart will carry, and trying it under that version is the point.*
 
+**R9a.** A local version that takes the place of an upstream or image version
+with a different integrity **MUST** be logged as a warning, once while the
+server runs. The warning **MUST** name the package, the version, where the local
+one was read from, and both integrities. *It is still served, by R9 and R24.
+But an install through it records an integrity no published copy has, and the
+next machine to install that lockfile from the published copy fails. A clean
+build of a published commit reproduces its bytes, so this names a build that
+does not.*
+
 **R10.** A local version's `dist.tarball` **MUST** point at this server, at the
 address the request's `Host` header names. *The client reaches the server by
 that address, whatever address the server listens on.*
