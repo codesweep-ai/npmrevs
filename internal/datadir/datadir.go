@@ -13,6 +13,7 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"sync"
@@ -125,6 +126,11 @@ func (idx *Index) Count() (names, versions int) {
 func (idx *Index) refreshLocked() {
 	idx.checked = time.Now()
 	seen := map[string]bool{}
+	type changed struct {
+		path string
+		info os.FileInfo
+	}
+	var stale []changed
 	for _, dir := range idx.dirs {
 		entries, err := os.ReadDir(dir)
 		if err != nil {
@@ -148,13 +154,29 @@ func (idx *Index) refreshLocked() {
 			if ok && old.size == info.Size() && old.modTime.Equal(info.ModTime()) {
 				continue
 			}
-			pkg, err := npmpkg.Read(path)
-			if err != nil {
-				idx.log.Warn("skipping a file that is not an npm package", "file", path, "err", err)
-				pkg = nil
-			}
-			idx.files[path] = fileState{size: info.Size(), modTime: info.ModTime(), pkg: pkg}
+			stale = append(stale, changed{path, info})
 		}
+	}
+	// Reading a file hashes and unpacks the whole tarball, and the server
+	// listens only once the first refresh is done, so the files are read on
+	// every core rather than one after another.
+	pkgs := make([]*npmpkg.Package, len(stale))
+	errs := make([]error, len(stale))
+	var wg sync.WaitGroup
+	slots := make(chan struct{}, runtime.GOMAXPROCS(0))
+	for i, c := range stale {
+		slots <- struct{}{}
+		wg.Go(func() {
+			defer func() { <-slots }()
+			pkgs[i], errs[i] = npmpkg.Read(c.path)
+		})
+	}
+	wg.Wait()
+	for i, c := range stale {
+		if errs[i] != nil {
+			idx.log.Warn("skipping a file that is not an npm package", "file", c.path, "err", errs[i])
+		}
+		idx.files[c.path] = fileState{size: c.info.Size(), modTime: c.info.ModTime(), pkg: pkgs[i]}
 	}
 	for path := range idx.files {
 		if !seen[path] {

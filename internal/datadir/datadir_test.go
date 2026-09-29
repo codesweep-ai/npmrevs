@@ -2,6 +2,7 @@ package datadir_test
 
 import (
 	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
@@ -61,6 +62,33 @@ func TestConflictingCopiesFailTheOpen(t *testing.T) {
 	var ce *datadir.ConflictError
 	if !errors.As(err, &ce) || ce.Name != "x" || len(ce.Paths) != 2 {
 		t.Fatalf("err %v", err)
+	}
+}
+
+// The files are read side by side, so each one's result has to land against
+// its own path, and a file that is no package must spoil none of the others.
+func TestOpenReadsEveryFileOfManyAtOnce(t *testing.T) {
+	a, b := t.TempDir(), t.TempDir()
+	for i := range 64 {
+		dir := a
+		if i%2 == 1 {
+			dir = b
+		}
+		testpkg.Write(t, dir, testpkg.Manifest(fmt.Sprintf("p%d", i%16), fmt.Sprintf("1.0.%d", i)), nil)
+	}
+	if err := os.WriteFile(filepath.Join(a, "broken.tgz"), []byte("not a tarball"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	idx, err := datadir.Open([]string{a, b}, quiet)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if names, versions := idx.Count(); names != 16 || versions != 64 {
+		t.Fatalf("count %d %d", names, versions)
+	}
+	vs, err := idx.Versions("p5")
+	if err != nil || len(vs) != 4 || vs["1.0.21"] == nil || vs["1.0.21"].Version != "1.0.21" {
+		t.Fatalf("versions %v, err %v", vs, err)
 	}
 }
 

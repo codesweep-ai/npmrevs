@@ -578,7 +578,8 @@ module.
 - `npmpkg.Package` is one tarball: its manifest, integrity, shasum, file count
   and path. `Entry` turns it into the version object a packument lists.
 - `datadir.Index` maps a name to its versions across the data directories, and
-  rereads what changed at most every 250 milliseconds.
+  rereads what changed at most every 250 milliseconds. It reads the changed
+  files on every core at once, and `serve` listens once the first read is done.
 - `images.Source` is the images registry as a server reads it: a tag list per
   package, trusted for a minute, and one manifest per version, trusted for good.
 - `registry.Server` is the handler, holding the index, the source, the upstream
