@@ -216,7 +216,8 @@ channel, cutting no tag and making no release. It runs when `ci` finishes, and
 builds the commit `ci` tested. It skips that commit once main's head changes
 more than `ledger/` after it, and the head publishes when its own `ci` passes.
 Every publish also writes an `npm` commit status to its commit, a failed one
-included. It stores no credential:
+included. It finishes once npmjs.com lists the new version, so the CI status
+file published after it names that version. It stores no credential:
 each package names the workflow as a trusted publisher. A trusted publisher can
 only be added to a package that exists, so the first publish runs
 `npm/publish.sh` from a machine logged in to npm.
