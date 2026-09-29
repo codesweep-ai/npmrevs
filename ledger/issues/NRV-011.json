@@ -1,0 +1,22 @@
+{
+  "id": "NRV-011",
+  "title": "cs-npmrevs answers nothing until it has read every package, one at a time",
+  "type": "defect",
+  "severity": "med",
+  "status": "closed",
+  "foundBy": "session agent, investigating campaign's failed `make repin` of 2026-09-29",
+  "opened": "2026-09-29",
+  "resolved": "2026-09-29",
+  "stint": "2026-09-29 npm build store",
+  "evidence": {
+    "commits": [
+      "630c059"
+    ],
+    "integrated": [],
+    "verified": "`cs-npmrevs serve` over the shared data directory and the owner's build store, 199 versions in 346 MB, answered `/-/npmrevs` after 0.87 s and 0.93 s. The previous build took 9.26 s. On two cores (`taskset -c 0-1`) it took 6.90 s against 9.02 s. `go test -race -count=1 ./internal/datadir/`: TestOpenReadsEveryFileOfManyAtOnce PASS, and `make check` passed."
+  },
+  "resolution": "The index reads the changed files on every core at once, so `serve` listens once they are all read rather than after each in turn.",
+  "details": "`serve` indexes the data directories before it listens, and the index read the tarballs one after another. Each read hashes the whole file and unpacks it to count its files. With the owner's build store beside the shared data directory, 199 versions in 346 MB, the server took 9.3 seconds to answer its first request on a 28-core machine. `with-npmrevs.sh` in the consuming projects gave up after about 10 seconds, so campaign's `make repin` failed.",
+  "notes": [],
+  "links": []
+}
