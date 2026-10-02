@@ -44,9 +44,9 @@ go tool cs-npmrevs version
 
 ### With npm
 
-Take this route in a project that already has a `package.json`. No Go toolchain
-is involved: the binary is packaged for npm and installs like any other dev
-dependency.
+Take this route in a project that already has a `package.json`, on Node 24.21.0
+or newer. No Go toolchain is involved: the binary is packaged for npm and
+installs like any other dev dependency.
 
 ```bash
 npm install --save-dev @codesweep-ai/npmrevs
@@ -119,25 +119,26 @@ The binary itself needs nothing. What you do around it may:
 
 | Program | What needs it |
 |---|---|
-| `npm` | installing through `serve`, and packing a tarball with `npm pack` |
+| `node` 24.21.0 or newer, with `npm` | installing through `serve`, and packing a tarball with `npm pack` |
 | `podman` | pushing an archive `image build` wrote to a registry; cs-npmrevs itself never needs a container engine |
 
-Install them on Fedora or RHEL:
+Install Node, with npm, from [nodejs.org](https://nodejs.org/en/download). Install podman on
+Fedora or RHEL:
 
 ```bash
-sudo dnf install -y nodejs podman
+sudo dnf install -y podman
 ```
 
 On Debian or Ubuntu, run:
 
 ```bash
-sudo apt-get install -y nodejs npm podman
+sudo apt-get install -y podman
 ```
 
 On macOS, podman runs its containers in a virtual machine, so start one too:
 
 ```bash
-brew install node podman
+brew install podman
 podman machine init && podman machine start
 ```
 
