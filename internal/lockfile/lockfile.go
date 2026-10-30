@@ -110,11 +110,11 @@ func walkV1(deps map[string]lockDep, prefix string, resolved *int, out *[]Entry)
 // nameFromKey reads the package name out of a `packages` key, the part after
 // the last node_modules/.
 func nameFromKey(key string) string {
-	i := strings.LastIndex(key, "node_modules/")
-	if i < 0 {
+	_, name, found := strings.CutLast(key, "node_modules/")
+	if !found {
 		return key
 	}
-	return key[i+len("node_modules/"):]
+	return name
 }
 
 // IsLoopback reports whether a resolved URL points at this machine.
